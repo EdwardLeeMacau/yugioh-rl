@@ -1,0 +1,22 @@
+From 9ff7dcdd441986e9513276d8ce877364c202dea4 Mon Sep 17 00:00:00 2001
+From: EdwardLeeMacau <b05901119@ntu.edu.tw>
+Date: Mon, 27 Nov 2023 07:27:35 +0800
+Subject: [PATCH] Downgrade Build Env to 3.7.11 for Compatibility
+
+---
+ Dockerfile | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/Dockerfile b/Dockerfile
+index 3ac7236..4f10913 100644
+--- a/Dockerfile
++++ b/Dockerfile
+@@ -1,4 +1,4 @@
+-FROM python:3.7 AS BUILD_IMAGE
++FROM python:3.7.11-bullseye AS BUILD_IMAGE
+
+ WORKDIR /usr/src/app
+
+--
+2.34.1
+

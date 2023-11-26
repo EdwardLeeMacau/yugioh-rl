@@ -19,16 +19,16 @@ bash init.sh
 # Copy `game.db` and `cards.cdb` to `mud-server/`
 cp cards.db game.db ../mud-server
 
-# Apply a Git patch to enable unlimited ban-list
+# Apply Git patch to enable unlimited ban-list and solve compatibility issues.
 cd ../mud-server
-git am ../assets/0001-Add-unlimited-banlist.patch
+git am "../assets/*.patch"
 
 # Build a docker image for the MUD server.
 # Refer to mud-server/readme.md for details.
 
 # Run a docker container with mounting cards.cdb and game.db
 docker run --rm -p 4000:4000/tcp \
-    -v cards.cdb:/usr/src/app/locale/en/cards.cdb \
-    -v game.db:/usr/src/app/game.db \
+    -v ./cards.cdb:/usr/src/app/locale/en/cards.cdb \
+    -v ./game.db:/usr/src/app/game.db \
     -it --name=yugioh yugioh
 ```
