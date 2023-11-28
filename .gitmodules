@@ -1,5 +1,5 @@
 [submodule "yugioh-game"]
-	path = mud-server
+	path = yugioh-game
 	url = git@github.com:tspivey/yugioh-game.git
 [submodule "ygopro-core"]
 	path = ygopro-core

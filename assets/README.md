@@ -2,10 +2,11 @@
 
 ## Usages of Files
 
-|    File     |            Descriptions            |
-| :---------: | :--------------------------------: |
-|  `game.db`  | Backup of an empty server database |
-| `deck.json` |     Deck for YGO04 game rules      |
+|       File        |            Descriptions            |
+| :---------------: | :--------------------------------: |
+|    `cards.cdb`    |   Card content and effects (en)    |
+|    `deck.json`    |     Deck for YGO04 game format     |
+| `.game.db.backup` | Backup of an empty server database |
 
 ## Steps to Configure Environment
 
@@ -17,7 +18,8 @@ cd assets
 bash init.sh
 
 # Copy `game.db` and `cards.cdb` to `mud-server/`
-cp cards.db game.db ../mud-server
+cp game.db ../mud-server
+cp cards.cdb ../mud-server/locale/en
 
 # Apply Git patch to enable unlimited ban-list and solve compatibility issues.
 cd ../mud-server
@@ -28,7 +30,6 @@ git am "../assets/*.patch"
 
 # Run a docker container with mounting cards.cdb and game.db
 docker run --rm -p 4000:4000/tcp \
-    -v ./cards.cdb:/usr/src/app/locale/en/cards.cdb \
     -v ./game.db:/usr/src/app/game.db \
     -it --name=yugioh yugioh
 ```
