@@ -1,4 +1,4 @@
-FROM python:3.7 AS BUILD_IMAGE
+FROM python:3.7.11-bullseye AS BUILD_IMAGE
 
 WORKDIR /usr/src/app
 
@@ -35,8 +35,9 @@ FROM python:3.7.11-slim-bullseye
 
 WORKDIR /usr/src/app
 
-COPY ygo/ ./ygo/
-COPY ygo.py ./
+# COPY ygo/ ./ygo/
+# COPY ygo.py ./
+COPY game.db ./
 COPY alembic/ ./alembic/
 COPY alembic.ini ./
 COPY lflist.conf ./
