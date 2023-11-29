@@ -1,7 +1,9 @@
 import io
+import json
 from twisted.internet import reactor
 
 from ygo.duel_reader import DuelReader
+from ygo.dump import dump
 from ygo.parsers.duel_parser import DuelParser
 from ygo.utils import process_duel
 
@@ -20,6 +22,7 @@ def select_place(self, player, count, flag):
 	specs = self.flag_to_usable_cardspecs(flag)
 	if count == 1:
 		pl.notify(pl._("Select place for card, one of %s.") % ", ".join(specs))
+		pl.notify('|{}|'.format(json.dumps({'actions': specs})))
 	else:
 		pl.notify(pl._("Select %d places for card, from %s.") % (count, ", ".join(specs)))
 	def r(caller):

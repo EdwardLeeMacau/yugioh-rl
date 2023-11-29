@@ -1,7 +1,9 @@
 import io
+import json
 from twisted.internet import reactor
 
 from ygo.card import Card
+from ygo.dump import dump
 from ygo.constants import LOCATION
 from ygo.duel_reader import DuelReader
 from ygo.parsers.duel_parser import DuelParser
@@ -52,6 +54,11 @@ def select_card(self, player, cancelable, min_cards, max_cards, cards, is_tribut
 			pl.notify(pl._("Select %d to %d cards to tribute separated by spaces:") % (min_cards, max_cards))
 		else:
 			pl.notify(pl._("Select %d to %d cards separated by spaces:") % (min_cards, max_cards))
+		s = '|{}|'.format(json.dumps(dump(
+			self, pl, actions=list(map(str, range(1, len(cards) + 1))),
+			systems='Select %d to %d cards separated by spaces:' % (min_cards, max_cards))
+		))
+		pl.notify(s)
 		for i, c in enumerate(cards):
 			name = self.cardlist_info_for_player(c, pl)
 			pl.notify("%d: %s" % (i+1, name))

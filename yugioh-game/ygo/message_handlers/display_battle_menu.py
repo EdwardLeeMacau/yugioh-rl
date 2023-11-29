@@ -1,6 +1,8 @@
+import json
 from twisted.internet import reactor
 
 from ygo.duel_reader import DuelReader
+from ygo.dump import dump
 from ygo.utils import process_duel
 from ygo.parsers.duel_parser import DuelParser
 
@@ -28,6 +30,7 @@ def display_battle_menu(self, pl):
 		else:
 			pl.notify(pl._("Invalid option."))
 			return self.display_battle_menu(pl)
+	pl.notify('|{}|'.format(json.dumps(dump(self, pl))))
 	pl.notify(DuelReader, r, no_abort=pl._("Invalid command."), prompt=pl._("Select an option:"), restore_parser=DuelParser)
 
 METHODS = {'display_battle_menu': display_battle_menu}

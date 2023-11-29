@@ -1,7 +1,9 @@
+import json
 from twisted.internet import reactor
 
 from ygo.constants import *
 from ygo.duel_reader import DuelReader
+from ygo.dump import dump
 from ygo.parsers.duel_parser import DuelParser
 from ygo.utils import process_duel
 
@@ -13,9 +15,10 @@ def idle_action(self, pl):
 			pl.notify(pl._("b: Enter the battle phase."))
 		if self.to_ep:
 			pl.notify(pl._("e: End phase."))
+		# Inject a JSON string to indicate which cards are usable
 		pl.notify(DuelReader, r,
 		no_abort=pl._("Invalid specifier. Retry."),
-		prompt=pl._("Select a card:"),
+		prompt=pl._("Select a card: \n|{}|".format(json.dumps(dump(self, pl)))),
 		restore_parser=DuelParser)
 	cards = []
 	for i in (0, 1):

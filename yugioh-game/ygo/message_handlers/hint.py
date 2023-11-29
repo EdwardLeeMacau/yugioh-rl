@@ -1,6 +1,8 @@
 import io
+import json
 from twisted.internet import reactor
 
+from ygo.dump import dump
 from ygo.utils import process_duel
 
 def msg_hint(self, data):
@@ -16,6 +18,7 @@ def hint(self, msg, player, data):
 	op = self.players[1 - player]
 	if msg == 3 and data in pl.strings['system']:
 		self.players[player].notify(pl.strings['system'][data])
+		self.players[player].notify(f'|{json.dumps(dump(self, pl, system=pl.strings["system"][data]))}|')
 	elif msg == 6 or msg == 7 or msg == 8:
 		reactor.callLater(0, process_duel, self)
 	elif msg == 9:
