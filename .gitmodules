@@ -1,9 +1,0 @@
-[submodule "yugioh-game"]
-	path = yugioh-game
-	url = git@github.com:tspivey/yugioh-game.git
-[submodule "ygopro-core"]
-	path = ygopro-core
-	url = https://github.com/Fluorohydride/ygopro-core
-[submodule "ygopro-scripts"]
-	path = ygopro-scripts
-	url = https://github.com/Fluorohydride/ygopro-scripts
