@@ -170,6 +170,32 @@ class YGOPlayer:
                 return ['c', ]
 
             case 0x4:
+                # See: Duel.msg_handlers['select_tribute']
+                if state['?'].get('requirement', None) == 'TRIBUTE':
+                    min_cards = state['?']['min']
+
+                    # ['1', '2', '3', '4', '5', '6', '7', ... ]
+                    indices = list(map(str, range(1, len(state['?']['choices']) + 1)))
+
+                    # [('1', '2'), ('1', '3'), ... ]
+                    options = list(combinations(indices, min_cards))
+
+                    # [('1 2'), ('1 3'), ... ]
+                    options = list(map(lambda x: ' '.join(x), options))
+
+                    return options
+
+                # See: Duel.msg_handler['select_place']
+                #
+                # PLACE monster cards / spell cards
+                # Auto-decidable. Not different in YGO04.
+                if state['?'].get('requirement', None) == 'PLACE':
+                    n = state['?']['min']
+
+                    option = ' '.join(state['?']['choices'][:n])
+
+                    return [option]
+
                 options = []
 
                 # usable = set(state['?']['summonable'] + state['?']['mset'] + state['?']['spsummon'])
@@ -179,7 +205,7 @@ class YGOPlayer:
                 options.extend(list(map(lambda x: x + '\r\ns', state['?']['summonable'])))
 
                 # Perform face-down defense position summon. The place to summon is random selected.
-                # options.extend(list(map(lambda x: x + '\r\nm', state['?']['mset'])))
+                options.extend(list(map(lambda x: x + '\r\nm', state['?']['mset'])))
 
                 if state['?']['to_bp']:
                     options.append('b')
@@ -192,6 +218,20 @@ class YGOPlayer:
             # See: Duel.msg_handlers['battle_attack']
             # See: Duel.msg_handlers['display_battle_menu']
             case 0x8:
+                if state['?'].get('requirement', None) == 'SELECT':
+                    min_cards = state['?']['min']
+
+                    # ['1', '2', '3', '4', '5', '6', '7', ... ]
+                    indices = list(map(str, range(1, len(state['?']['choices']) + 1)))
+
+                    # [('1', '2'), ('1', '3'), ... ]
+                    options = list(combinations(indices, min_cards))
+
+                    # [('1 2'), ('1 3'), ... ]
+                    options = list(map(lambda x: ' '.join(x), options))
+
+                    return options
+
                 options = []
 
                 # Perform attack. The target to attack is random selected.
@@ -205,14 +245,19 @@ class YGOPlayer:
 
                 return options
 
-            # See: Duel.msg_handlers['hint']
-            # !! Cannot hold more than 6 cards in hand
             case 0x200:
+                if state['?']['requirement'] != 'SELECT':
+                    raise ValueError(f"requirement is not SELECT, but {state['?']['requirement']}")
+
+                # See: Duel.msg_handlers['select_card']
+                # !! Cannot hold more than 6 cards in hand
+                min_cards = state['?']['min']
+
                 # ['1', '2', '3', '4', '5', '6', '7', ... ]
-                indices = list(map(str, range(1, len(state['state']['hand']) + 1)))
+                indices = list(map(str, range(1, len(state['?']['choices']) + 1)))
 
                 # [('1', '2'), ('1', '3'), ... ]
-                options = list(combinations(indices, len(state['state']['hand']) - 6))
+                options = list(combinations(indices, min_cards))
 
                 # [('1 2'), ('1 3'), ... ]
                 options = list(map(lambda x: ' '.join(x), options))

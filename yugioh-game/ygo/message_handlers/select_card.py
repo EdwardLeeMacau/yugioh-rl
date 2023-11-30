@@ -54,11 +54,13 @@ def select_card(self, player, cancelable, min_cards, max_cards, cards, is_tribut
 			pl.notify(pl._("Select %d to %d cards to tribute separated by spaces:") % (min_cards, max_cards))
 		else:
 			pl.notify(pl._("Select %d to %d cards separated by spaces:") % (min_cards, max_cards))
-		s = '|{}|'.format(json.dumps(dump(
-			self, pl, actions=list(map(str, range(1, len(cards) + 1))),
-			systems='Select %d to %d cards separated by spaces:' % (min_cards, max_cards))
-		))
-		pl.notify(s)
+		pl.notify('|{}|'.format(json.dumps(dump(
+			self, pl, **{ '?': {
+				'requirement': 'TRIBUTE' if is_tribute else 'SELECT',
+				'min': min_cards, 'max': max_cards,
+				'choices': [card.code for card in cards],
+			}}
+		))))
 		for i, c in enumerate(cards):
 			name = self.cardlist_info_for_player(c, pl)
 			pl.notify("%d: %s" % (i+1, name))

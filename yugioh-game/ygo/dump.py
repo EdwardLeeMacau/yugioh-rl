@@ -32,12 +32,24 @@ def _dump_state(duel: Duel, player: Player) -> Dict:
         # See: Duel.show_table()
         'table': {
             'player': {
-                'monster': [card.code for card in duel.get_cards_in_location(index, LOCATION.MZONE)],
-                'spell': [card.code for card in duel.get_cards_in_location(index, LOCATION.SZONE)],
+                'monster': [
+                    (card.code, card.position, )
+                        for card in duel.get_cards_in_location(index, LOCATION.MZONE)
+                ],
+                'spell': [
+                    (card.code, card.position, )
+                        for card in duel.get_cards_in_location(index, LOCATION.SZONE)
+                ],
             },
             "opponent": {
-                'monster': [card.code for card in duel.get_cards_in_location(1 - index, LOCATION.MZONE)],
-                'spell': [card.code for card in duel.get_cards_in_location(1 - index, LOCATION.SZONE)],
+                'monster': [
+                    ((0 if card.position & (0x2 | 0x8) else card.code), card.position)
+                        for card in duel.get_cards_in_location(1 - index, LOCATION.MZONE)
+                ],
+                'spell': [
+                    ((0 if card.position & (0x2 | 0x8) else card.code), card.position)
+                        for card in duel.get_cards_in_location(1 - index, LOCATION.SZONE)
+                ],
             }
         },
     }

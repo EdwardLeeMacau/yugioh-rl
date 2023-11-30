@@ -39,4 +39,4 @@ def play_rock_paper_scissors(player1: YGOPlayer, player2: YGOPlayer) -> bool:
 
     return res
 
-    
+
