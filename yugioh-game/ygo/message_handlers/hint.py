@@ -1,8 +1,6 @@
 import io
-import json
 from twisted.internet import reactor
 
-from ygo.dump import dump
 from ygo.utils import process_duel
 
 def msg_hint(self, data):

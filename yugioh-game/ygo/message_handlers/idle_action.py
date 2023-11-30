@@ -17,9 +17,29 @@ def idle_action(self, pl):
 			pl.notify(pl._("e: End phase."))
 		# Inject a JSON string to indicate which cards are usable
 		pl.notify(DuelReader, r,
-		no_abort=pl._("Invalid specifier. Retry."),
-		prompt=pl._("Select a card: \n|{}|".format(json.dumps(dump(self, pl)))),
-		restore_parser=DuelParser)
+			no_abort=pl._("Invalid specifier. Retry."),
+			prompt=pl._("Select a card: \n|{}|".format(json.dumps(dump(
+				self, pl, **{ '?': {
+					'requirement': 'IDLE',
+					# Summonable in attack position
+					'summonable': [card.get_spec(pl) for card in self.summonable],
+					# Summonable in defense position
+					'mset': [card.get_spec(pl) for card in self.idle_mset],
+					# Special summonable
+					'spsummon': [card.get_spec(pl) for card in self.spsummon],
+					# Activatable
+					'activate': [card.get_spec(pl) for card in self.idle_activate],
+					# Re-positionable
+					'repos': [card.get_spec(pl) for card in self.repos],
+					# Settable
+					'set': [card.get_spec(pl) for card in self.idle_set],
+					# To next phase
+					'to_bp': self.to_bp,
+					'to_ep': self.to_ep,
+				}}
+			)))),
+			restore_parser=DuelParser
+		)
 	cards = []
 	for i in (0, 1):
 		for j in (LOCATION.HAND, LOCATION.MZONE, LOCATION.SZONE, LOCATION.GRAVE, LOCATION.EXTRA):

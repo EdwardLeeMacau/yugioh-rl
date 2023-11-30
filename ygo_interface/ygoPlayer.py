@@ -232,6 +232,11 @@ class YGOPlayer:
 
                     return options
 
+                # See: Duel.msg_handlers['select_option']
+                # Options for battle phase
+                if state['?'].get('requirement', None) == 'EFFECT':
+                    return state['?']['choices']
+
                 options = []
 
                 # Perform attack. The target to attack is random selected.

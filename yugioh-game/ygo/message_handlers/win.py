@@ -1,8 +1,6 @@
 import io
 import json
 
-from ygo.dump import dump
-
 def msg_win(self, data):
 	data = io.BytesIO(data[1:])
 	player = self.read_u8(data)

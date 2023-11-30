@@ -1,4 +1,4 @@
-from typing import Callable, Dict
+from typing import Callable, Dict, Optional
 
 from ygo.constants import LOCATION
 from ygo.duel import Duel
@@ -54,53 +54,7 @@ def _dump_state(duel: Duel, player: Player) -> Dict:
         },
     }
 
-def _dump_idle_options(duel: Duel, player: Player) -> Dict:
-    """ Pack the current valid action of the duel into a JSON string. """
-    return {
-        # Summonable in attack position
-        'summonable': [card.get_spec(player) for card in duel.summonable],
-        # Summonable in defense position
-        'mset': [card.get_spec(player) for card in duel.idle_mset],
-        # Special summonable
-        'spsummon': [card.get_spec(player) for card in duel.spsummon],
-        # Activatable
-        'activate': [card.get_spec(player) for card in duel.idle_activate],
-        # Re-positionable
-        'repos': [card.get_spec(player) for card in duel.repos],
-        # Settable
-        'set': [card.get_spec(player) for card in duel.idle_set],
-        # To next phase
-        'to_bp': duel.to_bp,
-        'to_ep': duel.to_ep,
-    }
-
-def _dump_battle_options(duel: Duel, player: Player) -> Dict:
-    return {
-        'attackable': [card.get_spec(player) for card in duel.attackable],
-        'activatable': [card.get_spec(player) for card in duel.activatable],
-        'to_m2': duel.to_m2,
-        'to_ep': duel.to_ep,
-    }
-
-def _dump(*args, **kwargs) -> Dict:
-    return {}
-
-def _dump_options(phase: int) -> Callable:
-    """ Pack the current valid action of the duel into a JSON string. """
-    return {
-        0x4: _dump_idle_options,
-        0x8: _dump_battle_options,
-    }.get(phase, _dump)
-
 # See ygo.constants.PHASES
-def dump(duel: Duel, player: Player, **kwargs) -> Dict:
+def dump(duel: Duel, player: Player, requirement: Optional[str] = None, **kwargs) -> Dict:
     """ Pack the current state of the duel into a JSON string. """
-    state = {
-        'state': _dump_state(duel, player),
-        '?': _dump_options(duel.current_phase)(duel, player),
-    }
-
-    # Concatenate the keyword arguments. The later one will override the former one.
-    state.update(kwargs)
-
-    return state
+    return { 'state': _dump_state(duel, player), **kwargs }

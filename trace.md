@@ -5,6 +5,7 @@
 |   2   |       hint        |
 |  10   |    battle cmd     |
 |  11   |       idle        |
+|  14   |   select option   |
 |  15   |    select card    |
 |  16   |   select chain    |
 |  18   |   select place    |
