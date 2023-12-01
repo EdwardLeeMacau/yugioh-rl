@@ -57,7 +57,8 @@ def select_option(self, player, options):
 	pl.notify(m)
 	pl.notify(dump_game_info(
 		self, pl, **{ '?': {
-			'requirement': 'SELECT', 'min': 1, 'max': 1, 'choices': list(range(1, len(opts) + 1)),
+			'requirement': 'SELECT', 'min': 1, 'max': 1,
+			'choices': list(range(1, len(opts) + 1)),
 		}}
 	))
 

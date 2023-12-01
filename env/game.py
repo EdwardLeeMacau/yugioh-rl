@@ -33,6 +33,41 @@ class Policy(ABC):
         if 'actions' in state and isinstance(state['actions'], list):
             return state['actions']
 
+        if state['?'].get('requirement', None) in ('SELECT', 'TRIBUTE'):
+            if (n := state['?'].get('foreach', None)) is None:
+                n = state['?']['min']
+
+            match state['?'].get('type', 'indices'):
+                case 'spec':
+                    # 'type': spec
+                    #
+                    # Return card specs to select, assume `n` is 1
+                    # >>> ['h3', 'h4', 's5', ... ]
+                    options = state['?']['choices']
+                case 'indices':
+                    # 'type': indices
+                    #
+                    # Return indices of cards to select
+                    # >>> [('1 2'), ('1 3'), ... ]
+                    indices = list(map(str, range(1, len(state['?']['choices']) + 1)))
+                    options = list(combinations(indices, n))
+                    options = list(map(lambda x: ' '.join(x), options))
+                case _:
+                    raise ValueError(f"unknown type {state['?']['type']}")
+
+            return options
+
+        # See: Duel.msg_handler['select_place']
+        #
+        # PLACE monster cards / spell cards
+        # Auto-decidable. Not different in YGO04.
+        if state['?'].get('requirement', None) == 'PLACE':
+            n = state['?']['min']
+
+            option = ' '.join(state['?']['choices'][:n])
+
+            return [option]
+
         match state['state']['phase']:
             case 0x1:
                 return ['c', ]
@@ -41,32 +76,6 @@ class Policy(ABC):
                 return ['c', ]
 
             case 0x4:
-                if state['?'].get('requirement', None) in ('SELECT', 'TRIBUTE'):
-                    if (n := state['?'].get('foreach', None)) is None:
-                        n = state['?']['min']
-
-                    # ['1', '2', '3', '4', '5', '6', '7', ... ]
-                    indices = list(map(str, range(1, len(state['?']['choices']) + 1)))
-
-                    # [('1', '2'), ('1', '3'), ... ]
-                    options = list(combinations(indices, n))
-
-                    # [('1 2'), ('1 3'), ... ]
-                    options = list(map(lambda x: ' '.join(x), options))
-
-                    return options
-
-                # See: Duel.msg_handler['select_place']
-                #
-                # PLACE monster cards / spell cards
-                # Auto-decidable. Not different in YGO04.
-                if state['?'].get('requirement', None) == 'PLACE':
-                    n = state['?']['min']
-
-                    option = ' '.join(state['?']['choices'][:n])
-
-                    return [option]
-
                 options = []
 
                 # usable = set(state['?']['summonable'] + state['?']['mset'] + state['?']['spsummon'])
@@ -98,20 +107,6 @@ class Policy(ABC):
             # See: Duel.msg_handlers['battle_attack']
             # See: Duel.msg_handlers['display_battle_menu']
             case 0x8:
-                if state['?'].get('requirement', None) == 'SELECT':
-                    min_cards = state['?']['min']
-
-                    # ['1', '2', '3', '4', '5', '6', '7', ... ]
-                    indices = list(map(str, range(1, len(state['?']['choices']) + 1)))
-
-                    # [('1', '2'), ('1', '3'), ... ]
-                    options = list(combinations(indices, min_cards))
-
-                    # [('1 2'), ('1 3'), ... ]
-                    options = list(map(lambda x: ' '.join(x), options))
-
-                    return options
-
                 # See: Duel.msg_handlers['select_option']
                 # Options for battle phase
                 if state['?'].get('requirement', None) == 'EFFECT':

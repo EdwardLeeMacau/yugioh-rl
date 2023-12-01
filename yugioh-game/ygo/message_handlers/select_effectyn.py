@@ -27,7 +27,12 @@ def select_effectyn(self, player, card, desc):
 		reactor.callLater(0, process_duel, self)
 	spec = card.get_spec(pl)
 	question = pl._("Do you want to use the effect from {card} in {spec}?").format(card=card.get_name(pl), spec=spec)
-	question += dump_game_info(self, pl, question=question, actions=['y', 'n'])
+	question += dump_game_info(
+		self, pl, **{ '?': {
+			'requirement': 'SELECT', 'type': 'spec', 'min': 1, 'max': 1,
+			'choices': ['y', 'n'],
+		}}
+	)
 	s = card.get_effect_description(pl, desc, True)
 	if s != '':
 		question += '\n'+s
