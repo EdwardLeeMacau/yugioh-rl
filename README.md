@@ -1,5 +1,11 @@
 # Yu-Gi-Oh RL
 
+## Project Architecture
+
+`Game`, `Account`, and `Player` aim to manage the resource to interact with MUD server. They are just adapters, and do not hold any game decision making issues.
+
+`Policy` is the abstract class for decision making. You can think `Policy.react()` is the function $\pi(a_t|s_t)$ in mathematical representation.
+
 ## Setup
 
 1. Prepare `game.db`
