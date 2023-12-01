@@ -41,15 +41,15 @@ class Policy(ABC):
                 return ['c', ]
 
             case 0x4:
-                # See: Duel.msg_handlers['select_tribute']
-                if state['?'].get('requirement', None) == 'TRIBUTE':
-                    min_cards = state['?']['min']
+                if state['?'].get('requirement', None) in ('SELECT', 'TRIBUTE'):
+                    if (n := state['?'].get('foreach', None)) is None:
+                        n = state['?']['min']
 
                     # ['1', '2', '3', '4', '5', '6', '7', ... ]
                     indices = list(map(str, range(1, len(state['?']['choices']) + 1)))
 
                     # [('1', '2'), ('1', '3'), ... ]
-                    options = list(combinations(indices, min_cards))
+                    options = list(combinations(indices, n))
 
                     # [('1 2'), ('1 3'), ... ]
                     options = list(map(lambda x: ' '.join(x), options))
@@ -77,6 +77,15 @@ class Policy(ABC):
 
                 # Perform face-down defense position summon. The place to summon is random selected.
                 options.extend(list(map(lambda x: x + '\r\nm', state['?']['mset'])))
+
+                # Perform set spell/trap card. The place to set is random selected.
+                # options.extend(list(map(lambda x: x + '\r\nt', state['?']['set'])))
+
+                # Perform re-position.
+                options.extend(list(map(lambda x: x + '\r\nr', state['?']['repos'])))
+
+                # Perform special summon. The place to summon is random selected.
+                options.extend(list(map(lambda x: x + '\r\nc', state['?']['spsummon'])))
 
                 if state['?']['to_bp']:
                     options.append('b')

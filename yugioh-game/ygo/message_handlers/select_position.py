@@ -2,6 +2,7 @@ import io
 from twisted.internet import reactor
 
 from ygo.card import Card
+from ygo.dump import dump_game_info
 from ygo.constants import POSITION
 from ygo.duel_menu import DuelMenu
 from ygo.parsers.duel_parser import DuelParser
@@ -22,14 +23,27 @@ def select_position(self, player, card, positions):
 	def set(caller, pos=None):
 		self.set_responsei(pos)
 		reactor.callLater(0, process_duel, self)
+	choices = []
 	if positions & POSITION.FACEUP_ATTACK:
 		m.item(pl._("Face-up attack"))(lambda caller: set(caller, 1))
+		choices.append(POSITION.FACEUP_ATTACK)
 	if positions & POSITION.FACEDOWN_ATTACK:
 		m.item(pl._("Face-down attack"))(lambda caller: set(caller, 2))
+		choices.append(POSITION.FACEDOWN_ATTACK)
 	if positions & POSITION.FACEUP_DEFENSE:
 		m.item(pl._("Face-up defense"))(lambda caller: set(caller, 4))
+		choices.append(POSITION.FACEUP_DEFENSE)
 	if positions & POSITION.FACEDOWN_DEFENSE:
 		m.item(pl._("Face-down defense"))(lambda caller: set(caller, 8))
+		choices.append(POSITION.FACEDOWN_DEFENSE)
+
+	pl.notify(dump_game_info(
+		self, pl, **{ '?': {
+			'requirement': 'SELECT',
+			'min': 1, 'max': 1,
+			'choices': choices,
+		}}
+	))
 	pl.notify(m)
 
 MESSAGES = {19: msg_select_position}

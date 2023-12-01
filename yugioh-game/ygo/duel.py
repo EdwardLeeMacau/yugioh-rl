@@ -247,6 +247,7 @@ class Duel(Joinable):
 		while data:
 			msg = int(data[0])
 			fn = self.message_map.get(msg)
+			# breakpoint()
 			if fn:
 				data = fn(data)
 			else:
@@ -765,14 +766,14 @@ class Duel(Joinable):
 		each message consists of a callable which takes the player and returns the properly formatted text
 		if no callable is received, the message is skipped
 		a player cannot be informed twice through this method.
-		
+
 		example:
 		duel.inform(pl, (INFORM.ALL_PLAYERS, lambda p: p._("you were informed")))
 		"""
 
 		if not ref_player or ref_player not in self.players:
 			raise ValueError("reference player must be duelling in this duel")
-			
+
 		players = self.players[:]
 		tag_players = self.tag_players[:]
 		watchers = list(filter(lambda p: p not in tag_players, self.watchers))
@@ -788,7 +789,7 @@ class Duel(Joinable):
 
 			if not callable(value):
 				continue
-			
+
 			to_be_informed = list(filter(lambda p: \
 				p not in informed and (\
 					(key & INFORM.PLAYER and p is ref_player) or \

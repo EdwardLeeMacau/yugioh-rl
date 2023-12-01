@@ -2,6 +2,7 @@ import io
 from twisted.internet import reactor
 
 from ygo.card import Card
+from ygo.dump import dump_game_info
 from ygo.duel_reader import DuelReader
 from ygo.parsers.duel_parser import DuelParser
 from ygo.utils import process_duel
@@ -49,6 +50,13 @@ def select_unselect_card(self, player, finishable, cancelable, min, max, select_
       else:
         state = pl._("checked")
       pl.notify("%d: %s (%s)" % (i+1, name, state))
+    pl.notify(dump_game_info(
+      self, pl, **{ '?': {
+        'requirement': 'SELECT',
+        'foreach': 1, 'min': min, 'max': max,
+        'choices': [card.code for card in select_cards],
+      }}
+    ))
     pl.notify(DuelReader, f, no_abort="Invalid command", restore_parser=DuelParser)
 
   def error(text):
