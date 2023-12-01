@@ -3,7 +3,7 @@ import json
 from twisted.internet import reactor
 
 from ygo.card import Card
-from ygo.dump import dump
+from ygo.dump import dump_game_info
 from ygo.duel_menu import DuelMenu
 from ygo.parsers.duel_parser import DuelParser
 from ygo.utils import process_duel
@@ -55,11 +55,11 @@ def select_option(self, player, options):
 	for idx, opt in enumerate(opts):
 		m.item(opt)(lambda caller, idx=idx: select(caller, idx))
 	pl.notify(m)
-	pl.notify('|{}|'.format(json.dumps(dump(
+	pl.notify(dump_game_info(
 		self, pl, **{ '?': {
 			'requirement': 'SELECT', 'min': 1, 'max': 1, 'choices': list(range(1, len(opts) + 1)),
 		}}
-	))))
+	))
 
 MESSAGES = {14: msg_select_option}
 

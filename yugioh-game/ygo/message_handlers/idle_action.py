@@ -3,7 +3,7 @@ from twisted.internet import reactor
 
 from ygo.constants import *
 from ygo.duel_reader import DuelReader
-from ygo.dump import dump
+from ygo.dump import dump_game_info
 from ygo.parsers.duel_parser import DuelParser
 from ygo.utils import process_duel
 
@@ -18,7 +18,7 @@ def idle_action(self, pl):
 		# Inject a JSON string to indicate which cards are usable
 		pl.notify(DuelReader, r,
 			no_abort=pl._("Invalid specifier. Retry."),
-			prompt=pl._("Select a card: \n|{}|".format(json.dumps(dump(
+			prompt=pl._("Select a card: \n{}".format(dump_game_info(
 				self, pl, **{ '?': {
 					'requirement': 'IDLE',
 					# Summonable in attack position
@@ -37,7 +37,7 @@ def idle_action(self, pl):
 					'to_bp': self.to_bp,
 					'to_ep': self.to_ep,
 				}}
-			)))),
+			))),
 			restore_parser=DuelParser
 		)
 	cards = []

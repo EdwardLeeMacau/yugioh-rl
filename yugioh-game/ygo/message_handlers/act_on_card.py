@@ -2,7 +2,6 @@ import json
 from twisted.internet import reactor
 
 from ygo.duel_reader import DuelReader
-from ygo.dump import dump
 from ygo.utils import process_duel
 from ygo.parsers.duel_parser import DuelParser
 
@@ -51,7 +50,6 @@ def act_on_card(self, caller, card):
 			options.append('r')
 		if card in self.spsummon:
 			options.append('c')
-		pl.notify('|{}|'.format(json.dumps(dump(self, pl, actions=options))))
 		pl.notify(DuelReader, action, no_abort=pl._("Invalid command."), prompt=pl._("Select action for {card}").format(card=name), restore_parser=DuelParser)
 	def action(caller):
 		if caller.text == 's' and card in self.summonable:

@@ -2,7 +2,7 @@ import json
 from twisted.internet import reactor
 
 from ygo.duel_reader import DuelReader
-from ygo.dump import dump
+from ygo.dump import dump_game_info
 from ygo.utils import process_duel
 from ygo.parsers.duel_parser import DuelParser
 
@@ -30,14 +30,14 @@ def display_battle_menu(self, pl):
 		else:
 			pl.notify(pl._("Invalid option."))
 			return self.display_battle_menu(pl)
-	pl.notify('|{}|'.format(json.dumps(dump(
+	pl.notify(dump_game_info(
 		self, pl, **{ '?': {
 			'attackable': [card.get_spec(pl) for card in self.attackable],
 			'activatable': [card.get_spec(pl) for card in self.activatable],
 			'to_m2': self.to_m2,
 			'to_ep': self.to_ep,
 		}}
-	))))
+	))
 	pl.notify(DuelReader, r, no_abort=pl._("Invalid command."), prompt=pl._("Select an option:"), restore_parser=DuelParser)
 
 METHODS = {'display_battle_menu': display_battle_menu}

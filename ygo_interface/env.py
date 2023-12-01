@@ -69,7 +69,12 @@ class SinglePlayerEnv:
     def last(self) -> Tuple[GameState, float, bool, bool, Dict]:
         """ Return the last state, reward, termination, truncation, and info. """
         terminated, state = self._game._player1.wait_action()
-        return state, 0.0, terminated, False, {}
+
+        # Field 'score' exists only when the game is over.
+        # +1.0 for win, -1.0 for lose, 0.0 for draw.
+        reward = state.get('score', 0.0)
+
+        return state, reward, terminated, False, {}
 
     def step(self, action: Action):
         self._game._player1.interact(action)

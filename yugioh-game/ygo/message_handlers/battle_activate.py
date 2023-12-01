@@ -2,7 +2,7 @@ import json
 from twisted.internet import reactor
 
 from ygo.duel_reader import DuelReader
-from ygo.dump import dump
+from ygo.dump import dump_game_info
 from ygo.utils import process_duel
 from ygo.parsers.duel_parser import DuelParser
 
@@ -28,7 +28,7 @@ def battle_activate(self, pl):
 		self.set_responsei((seq << 16))
 		reactor.callLater(0, process_duel, self)
 	# TODO: Extend the actions set.
-	pl.notify('|{}|'.format(json.dumps(dump(self, pl, actions='z'))))
+	pl.notify(dump_game_info(self, pl, actions='z'))
 	pl.notify(DuelReader, r, no_abort="Invalid command", restore_parser=DuelParser)
 
 METHODS = {'battle_activate': battle_activate}

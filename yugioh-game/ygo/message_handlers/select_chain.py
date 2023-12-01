@@ -3,7 +3,7 @@ import json
 from twisted.internet import reactor
 
 from ygo.card import Card
-from ygo.dump import dump
+from ygo.dump import dump_game_info
 from ygo.duel_reader import DuelReader
 from ygo.parsers.duel_parser import DuelParser
 from ygo.utils import process_duel
@@ -67,7 +67,7 @@ def select_chain(self, player, size, spe_count, forced, chains):
 			prompt = pl._("Select card to chain:")
 		else:
 			prompt = pl._("Select card to chain (c = cancel):")
-		prompt += '\n|{}|'.format(json.dumps(dump(self, pl, actions=['c', ])))
+		prompt += '\n{}'.format(dump_game_info(self, pl, actions=['c', ]))
 		pl.notify(DuelReader, r, no_abort=pl._("Invalid command."),
 		prompt=prompt, restore_parser=DuelParser)
 	def r(caller):

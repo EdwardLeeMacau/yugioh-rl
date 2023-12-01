@@ -3,7 +3,7 @@ import json
 from twisted.internet import reactor
 
 from ygo.card import Card
-from ygo.dump import dump
+from ygo.dump import dump_game_info
 from ygo.parsers.yes_or_no_parser import yes_or_no_parser
 from ygo.utils import process_duel
 
@@ -27,9 +27,7 @@ def select_effectyn(self, player, card, desc):
 		reactor.callLater(0, process_duel, self)
 	spec = card.get_spec(pl)
 	question = pl._("Do you want to use the effect from {card} in {spec}?").format(card=card.get_name(pl), spec=spec)
-	question += '|{}|'.format(
-		json.dumps(dump(self, pl, question=question, actions=['y', 'n']))
-	)
+	question += dump_game_info(self, pl, question=question, actions=['y', 'n'])
 	s = card.get_effect_description(pl, desc, True)
 	if s != '':
 		question += '\n'+s

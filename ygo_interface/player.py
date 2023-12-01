@@ -173,7 +173,7 @@ class Player:
         # Check if the key 'terminated' is in the JSON string
         # 1: win, -1: lose, 0: draw
         if 'terminated' in embed:
-            return True, {}
+            return True, {'score': embed['score']}
 
         return False, embed
 
