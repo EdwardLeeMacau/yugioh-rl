@@ -1,4 +1,5 @@
 import io
+import json
 
 def msg_win(self, data):
 	data = io.BytesIO(data[1:])
@@ -27,11 +28,13 @@ def win(self, player, reason):
 			w.notify(w._("%s and you won (%s).")%(winners[1 - winners.index(w)].nickname, l_reason(w)))
 		else:
 			w.notify(w._("You won (%s).") % l_reason(w))
+			w.notify("|{}|".format(json.dumps({'terminated': True})))
 	for l in losers:
 		if self.tag is True:
 			l.notify(l._("%s and you lost (%s).")%(losers[1 - losers.index(l)].nickname, l_reason(l)))
 		else:
 			l.notify(l._("You lost (%s).") % l_reason(l))
+			l.notify("|{}|".format(json.dumps({'terminated': True})))
 
 	for pl in self.watchers:
 		if pl.watching is True:

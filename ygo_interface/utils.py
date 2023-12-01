@@ -27,8 +27,10 @@ def determine_winner(player1_action: RockPaperScissorsAction, player2_action: Ro
 def play_rock_paper_scissors(player1: YGOPlayer, player2: YGOPlayer) -> bool:
     # Play rock paper scissors utils players's outcome difference
     while True:
-        player1_action = random.choice(list(RockPaperScissorsAction))
-        player2_action = random.choice(list(RockPaperScissorsAction))
+        # player1_action = random.choice(list(RockPaperScissorsAction))
+        # player2_action = random.choice(list(RockPaperScissorsAction))
+        player1_action = RockPaperScissorsAction.Rock
+        player2_action = RockPaperScissorsAction.Scissors
 
         res = determine_winner(player1_action, player2_action)
 
@@ -39,4 +41,4 @@ def play_rock_paper_scissors(player1: YGOPlayer, player2: YGOPlayer) -> bool:
 
     return res
 
-    
+

@@ -1,7 +1,9 @@
 import io
+import json
 from twisted.internet import reactor
 
 from ygo.duel_reader import DuelReader
+from ygo.dump import dump
 from ygo.parsers.duel_parser import DuelParser
 from ygo.utils import process_duel
 
@@ -15,6 +17,7 @@ def msg_select_place(self, data):
 	self.cm.call_callbacks('select_place', player, count, flag)
 	return data.read()
 
+# PLACE is used in many scenarios.
 def select_place(self, player, count, flag):
 	pl = self.players[player]
 	specs = self.flag_to_usable_cardspecs(flag)
@@ -22,6 +25,11 @@ def select_place(self, player, count, flag):
 		pl.notify(pl._("Select place for card, one of %s.") % ", ".join(specs))
 	else:
 		pl.notify(pl._("Select %d places for card, from %s.") % (count, ", ".join(specs)))
+	pl.notify('|{}|'.format(json.dumps(dump(
+		self, pl, **{ '?': {
+			'requirement': 'PLACE', 'min': count, 'max': count, 'choices': specs,
+		}}
+	))))
 	def r(caller):
 		values = caller.text.split()
 		if len(set(values)) != len(values):
