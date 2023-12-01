@@ -9,8 +9,8 @@ from itertools import combinations
 from threading import Thread
 from typing import List, Tuple
 
-import accounts
-from player import Player, GameState, Action
+from . import accounts
+from .player import Player, GameState, Action
 
 class RockPaperScissorsAction(IntEnum):
     Rock = 1

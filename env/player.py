@@ -6,8 +6,8 @@ from pprint import pformat
 from telnetlib import Telnet
 from typing import Dict, Tuple
 
-import accounts
-from accounts import Account
+from . import accounts
+from .accounts import Account
 
 
 Action = str

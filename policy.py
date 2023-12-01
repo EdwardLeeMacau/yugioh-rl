@@ -1,6 +1,6 @@
 import random
 
-from game import GameState, Action, Policy
+from env.game import GameState, Action, Policy
 
 
 class RandomPolicy(Policy):

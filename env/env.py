@@ -13,7 +13,7 @@ from datetime import datetime
 from threading import Event, Thread
 from typing import Dict, List, Tuple
 
-from game import Action, Game, GameState, Player, Policy
+from .game import Action, Game, GameState, Player, Policy
 
 Info = Dict
 

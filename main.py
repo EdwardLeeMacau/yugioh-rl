@@ -3,8 +3,8 @@ import os
 from datetime import datetime
 from typing import List, Tuple
 
-from env import SinglePlayerEnv
-from game import GameState, Action
+from env.env import SinglePlayerEnv
+from env.game import GameState, Action
 from policy import RandomPolicy
 from tqdm import tqdm
 
