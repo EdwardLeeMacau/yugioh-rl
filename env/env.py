@@ -11,17 +11,18 @@ import json
 import os
 from datetime import datetime
 from threading import Event, Thread
+from multiprocessing import Process
 from typing import Dict, List, Tuple
 
 from .game import Action, Game, GameState, Player, Policy
 
 Info = Dict
 
-def game_loop(event: Event, player: Player, agent: Policy) -> None:
+def game_loop(player: Player, agent: Policy) -> None:
     # For now we use threads to demonstrate the game loop for simplicity,
     # because wait_action() is a blocking I/O operation.
 
-    while not event.is_set():
+    while True:
         terminated, state = player.wait_action()
         if terminated:
             break
@@ -34,13 +35,13 @@ def game_loop(event: Event, player: Player, agent: Policy) -> None:
 class SinglePlayerEnv:
     _game: Game
     _opponent: Policy
-    _thread: Thread
+    _process: Process
 
     def __init__(self, opponent: Policy):
         self._game = None
         self._opponent = opponent
-        self._thread = None
-        self._event = Event()
+        self._process = None
+        # self._event = Event()
 
     def reset(self, seed=None):
         """ Reset the game.
@@ -52,9 +53,9 @@ class SinglePlayerEnv:
             ! NOT work because the randomness comes from both the game and the agent.
         """
         # Try to halt the previous launched thread.
-        self._event.set()
-        if self._thread is not None:
-            self._thread.join()
+        # self._event.set()
+        if self._process is not None:
+            self._process.terminate()
 
         # Assume that all resources are released after the instance
         # is no longer referenced by any variables.
@@ -62,9 +63,8 @@ class SinglePlayerEnv:
             self._game.close()
 
         self._game = Game().start()
-        self._event.clear()
-        self._thread = Thread(target=game_loop, args=(self._event, self._game._player2, self._opponent))
-        self._thread.start()
+        self._process = Process(target=game_loop, args=(self._game._player2, self._opponent))
+        self._process.start()
 
     def last(self) -> Tuple[GameState, float, bool, bool, Dict]:
         """ Return the last state, reward, termination, truncation, and info. """

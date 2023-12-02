@@ -10,7 +10,7 @@ from tqdm import tqdm
 
 def main():
     env = SinglePlayerEnv(opponent=RandomPolicy())
-    # env.reset()
+    env.reset()
 
     # ---------------------- TODO: Implement the policy -----------------------
     policy = RandomPolicy()
