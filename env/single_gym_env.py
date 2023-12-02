@@ -89,6 +89,45 @@ class YGOEnv(gym.Env):
 
     }
 
+    action2digit = {
+        "": 0, # no action
+        "e": 1, # enter end phase
+        "z": 2, # back
+        "s": 3, # summon this card in face-up attack position
+        "m": 4, # summon this card in face-down defense position/ enter main phase
+        "t": 5, # set this card (Trap/Magic)
+        "v": 6, #activate this card
+        "c": 7, # cancel
+        "b": 8, # enter battle phase
+        "y": 9, # yes
+        "n": 10, # no
+        "a": 11, # attack
+
+        "s1": 12,
+        "s2": 13,
+        "s3": 14,
+        "s4": 15,
+        "s5": 16,
+
+        "m1": 17,
+        "m2": 18,
+        "m3": 19,
+        "m4": 20,
+        "m5": 21,
+
+        "h1": 22,
+        "h2": 23,
+        "h3": 24,
+        "h4": 25,
+        "h5": 26,
+        "h6": 27,
+        "h7": 28,
+        "h8": 29,
+        "h9": 30,
+        "h10": 31,
+
+    }
+
     deck_list = [
             72989439,
             77585513,
@@ -128,7 +167,7 @@ class YGOEnv(gym.Env):
             44095762,
             31560081,
             0,
-            "empty"
+            "empty",
             "token"
             ]
 
@@ -225,6 +264,13 @@ class YGOEnv(gym.Env):
                 return True
         return False
 
+    def get_action_mask(self) -> np.ndarray:
+        mask = np.zeros(shape=(len(self.digit2action.keys()), ))
+        for valid_action in Policy.list_valid_actions(self.current_state_dict):
+            for sub_valid_action in valid_action.split("\r\n"):
+                mask[self.action2digit[sub_valid_action]] = 1
+        return mask.astype(np.int8)
+
     def step(self, action: Action) -> Tuple[spaces.Dict, float, bool, bool, Dict]:
         truncate = False
         reward = 0.
@@ -304,7 +350,7 @@ if __name__ =="__main__":
     env = gym.make('single_ygo')
     env.reset()
     while True:
-        action = env.action_space.sample()
+        action = env.action_space.sample(mask=env.get_action_mask())
         obs, reward,  done, _, info = env.step(action)
         if done:
             breakpoint()
