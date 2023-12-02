@@ -129,6 +129,7 @@ class YGOEnv(gym.Env):
             31560081,
             0,
             "empty"
+            "token"
             ]
 
     _game: Game
@@ -203,7 +204,10 @@ class YGOEnv(gym.Env):
         frame_array[:, 0] = self.deck_list.index("empty")
         frame_array[:, 1] = 4
         for i in range(len(id_state_list)):
-            frame_array[i, 0] = self.deck_list.index(id_state_list[i][0])
+            try:
+                frame_array[i, 0] = self.deck_list.index(id_state_list[i][0])
+            except:
+                frame_array[i, 0] = self.deck_list.index("token")
             frame_array[i, 1] = id_state_list[i][0]
         return frame_array
 

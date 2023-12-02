@@ -33,6 +33,4 @@ if __name__ =="__main__":
     env = gym.make('single_ygo')
     env.reset()
     while True:
-        
-        breakpoint()
         obs, reward,  done, _, info = env.step(action)
