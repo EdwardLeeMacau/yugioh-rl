@@ -14,7 +14,7 @@ class Account:
 _POOL = Queue(maxsize=8)
 for i in range(1, 9):
     _POOL.put(Account(
-        host="cubone.csie.org", port=4002,
+        host="cubone.csie.org", port=4000,
         username=f"player{i}", password=f"player{i}"
     ))
 
