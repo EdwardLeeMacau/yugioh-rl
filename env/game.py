@@ -28,7 +28,8 @@ def determine_first_player(p1: Player, p2: Player) -> Tuple[Player]:
     return (p1, p2) if res else (p2, p1)
 
 class Policy(ABC):
-    def list_valid_actions(self, state: GameState) -> List[Action]:
+    @staticmethod
+    def list_valid_actions(state: GameState) -> List[Action]:
         """ Decide an action from the valid actions. """
         if 'actions' in state and isinstance(state['actions'], list):
             return state['actions']
