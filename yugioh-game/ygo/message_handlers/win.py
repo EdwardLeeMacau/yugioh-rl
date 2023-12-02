@@ -1,5 +1,6 @@
 import io
-import json
+
+from ygo.dump import dump_game_info
 
 def msg_win(self, data):
 	data = io.BytesIO(data[1:])
@@ -13,7 +14,7 @@ def win(self, player, reason):
 		self.room.announce_draw()
 		self.end()
 		for p in self.players:
-			p.notify(f"|{json.dumps({'terminated': True, 'score': 0})}|")
+			p.notify(dump_game_info(self, p, terminated=True, score=0))
 		return
 
 	if self.tag is True:
@@ -30,13 +31,13 @@ def win(self, player, reason):
 			w.notify(w._("%s and you won (%s).")%(winners[1 - winners.index(w)].nickname, l_reason(w)))
 		else:
 			w.notify(w._("You won (%s).") % l_reason(w))
-			w.notify(f"|{json.dumps({'terminated': True, 'score': 1})}|")
+			w.notify(dump_game_info(self, w, terminated=True, score=1))
 	for l in losers:
 		if self.tag is True:
 			l.notify(l._("%s and you lost (%s).")%(losers[1 - losers.index(l)].nickname, l_reason(l)))
 		else:
 			l.notify(l._("You lost (%s).") % l_reason(l))
-			l.notify(f"|{json.dumps({'terminated': True, 'score': -1})}|")
+			l.notify(dump_game_info(self, l, terminated=True, score=-1))
 
 	for pl in self.watchers:
 		if pl.watching is True:
