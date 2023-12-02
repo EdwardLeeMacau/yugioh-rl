@@ -117,6 +117,9 @@ class Policy(ABC):
                 # Perform attack. The target to attack is random selected.
                 options.extend(list(map(lambda x: 'a\r\n' + x, state['?']['attackable'])))
 
+                # Perform activate. The card to activate is random selected.
+                options.extend(list(map(lambda x: 'c\r\n' + x, state['?']['activatable'])))
+
                 if state['?']['to_m2']:
                     options.append('m')
 
