@@ -36,12 +36,21 @@ class Server(gsb.Server):
 		con = caller.connection
 		if not con.player or not con.player.connection or con.dont_process:
 			return
+		# Immediately close a duel. Do not handle reconnection.
 		if con.player.duel is not None and con.player.watching is False:
 			# player is in a duel, so we won't disconnect entirely
 			for pl in self.get_all_players():
 				pl.notify(pl._("%s lost connection while in a duel.")%con.player.nickname)
 			con.player.duel.player_disconnected(con.player)
-			con.player.detach_connection()
+			# con.player.detach_connection()
+			# if con.player.watching:
+			# 	con.player.duel.remove_watcher(con.player)
+			# elif con.player.room is not None:
+			# 	con.player.room.leave(con.player)
+			self.remove_player(con.player.nickname)
+			con.session.close()
+			for pl in self.get_all_players():
+				pl.notify(pl._("%s logged out.") % con.player.nickname)
 		else:
 			if con.player.watching:
 				con.player.duel.remove_watcher(con.player)

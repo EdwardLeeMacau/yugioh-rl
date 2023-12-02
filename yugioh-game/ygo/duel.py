@@ -693,9 +693,11 @@ class Duel(Joinable):
 			decks = [self.cards[0], self.cards[1]]
 		self.debug(event_type='start', players=players, decks=decks, seed=self.seed, options = options, lp = self.lp)
 
+	# Immediately close a duel. Do not handle reconnection.
 	def player_disconnected(self, player):
-		if not self.paused:
-			self.pause()
+		# if not self.paused:
+		# 	self.pause()
+		self.end()
 
 	def player_reconnected(self, pl):
 		pl.set_parser('DuelParser')
