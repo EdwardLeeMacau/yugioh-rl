@@ -39,7 +39,7 @@ The game is based on YGO04 environment with these revision:
     docker build . -t yugioh;
     ```
 
-4. Run docker container
+4. Run MUD server inside docker container
 
     ```bash
     cd yugioh-game;
@@ -55,10 +55,18 @@ The game is based on YGO04 environment with these revision:
     python3 ygo.py
     ```
 
-5. Test with telnet (manual) or `main.py` (random agent)
+5. Test with telnet (manual)
 
     ```bash
-    cd ygo_interface;
+    telnet localhost 4000
+    ```
 
+    or with `main.py` (random agent)
+
+    ```bash
     python3 main.py
     ```
+
+## Sources
+
+- tspivey/yugioh-game. We adapt the server based on Commit-ID `314f15ef5275f6f4d22101c3d5f00c62560b5a88`.
