@@ -6,6 +6,17 @@
 
 `Policy` is the abstract class for decision making. You can think `Policy.react()` is the function $\pi(a_t|s_t)$ in mathematical representation.
 
+## Game Design
+
+The game is based on YGO04 environment with these revision:
+
+- Card effects depends on the version of YGOPro-core.
+- Replace the cards with effect "檢索" or "檢查對方手牌" to other monsters, spells and traps.
+  - 74191942 (Painful choice) => 44095762 (Mirror Force)
+  - 32807846 (Reinforcement of the Army) => 44095762 (Mirror Force)
+  - 42829885 (The Forceful Sentry) => 71413901 (Breaker the Magical Warrior)
+  - 17375316 (Confiscation) => 69162969 (Lightning Vortex)
+
 ## Setup
 
 1. Prepare `game.db`
