@@ -31,6 +31,7 @@ def main():
             actions = env.list_valid_actions()
             action = policy.react(state, actions)
             env.step(action)
+        breakpoint()
 
         # with open(os.path.join('logs', f'{start}-{env._game._player1.username}.json'), 'w') as f:
         #     json.dump(trajectories, f, indent=4)

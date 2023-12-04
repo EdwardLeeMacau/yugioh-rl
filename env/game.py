@@ -4,12 +4,8 @@ from abc import ABC, abstractmethod
 from enum import IntEnum
 from typing import List, Tuple
 
-<<<<<<< HEAD
 from env import accounts
 from env.player import Player, GameState, Action
-=======
-from .player import Player, GameState, Action
->>>>>>> origin/env
 
 class RockPaperScissorsAction(IntEnum):
     Rock = 1
@@ -27,129 +23,6 @@ def determine_first_player(p1: Player, p2: Player) -> Tuple[Player]:
     return (p1, p2) if res else (p2, p1)
 
 class Policy(ABC):
-<<<<<<< HEAD
-    @staticmethod
-    def list_valid_actions(state: GameState) -> List[Action]:
-        """ Decide an action from the valid actions. """
-        if 'actions' in state and isinstance(state['actions'], list):
-            return state['actions']
-
-        if state['?'].get('requirement', None) in ('SELECT', 'TRIBUTE'):
-            if (n := state['?'].get('foreach', None)) is None:
-                n = state['?']['min']
-
-            match state['?'].get('type', 'indices'):
-                case 'spec':
-                    # 'type': spec
-                    #
-                    # Return card specs to select, assume `n` is 1
-                    # >>> ['h3', 'h4', 's5', ... ]
-                    options = state['?']['choices']
-                case 'indices':
-                    # 'type': indices
-                    #
-                    # Return indices of cards to select
-                    # >>> [('1 2'), ('1 3'), ... ]
-                    indices = list(map(str, range(1, len(state['?']['choices']) + 1)))
-                    options = list(combinations(indices, n))
-                    options = list(map(lambda x: ' '.join(x), options))
-                case _:
-                    raise ValueError(f"unknown type {state['?']['type']}")
-
-            return options
-
-        # See: Duel.msg_handler['select_place']
-        #
-        # PLACE monster cards / spell cards
-        # Auto-decidable. Not different in YGO04.
-        if state['?'].get('requirement', None) == 'PLACE':
-            n = state['?']['min']
-
-            option = ' '.join(state['?']['choices'][:n])
-
-            return [option]
-
-        match state['state']['phase']:
-            case 0x1:
-                return ['c', ]
-
-            case 0x2:
-                return ['c', ]
-
-            case 0x4:
-                options = []
-
-                # usable = set(state['?']['summonable'] + state['?']['mset'] + state['?']['spsummon'])
-                # options.extend(list(usable))
-
-                # Perform face-up attack position summon. The place to summon is random selected.
-                options.extend(list(map(lambda x: x + '\r\ns', state['?']['summonable'])))
-
-                # Perform face-down defense position summon. The place to summon is random selected.
-                options.extend(list(map(lambda x: x + '\r\nm', state['?']['mset'])))
-
-                # Perform set spell/trap card. The place to set is random selected.
-                # options.extend(list(map(lambda x: x + '\r\nt', state['?']['set'])))
-
-                # Perform re-position.
-                options.extend(list(map(lambda x: x + '\r\nr', state['?']['repos'])))
-
-                # Perform special summon. The place to summon is random selected.
-                options.extend(list(map(lambda x: x + '\r\nc', state['?']['spsummon'])))
-
-                if state['?']['to_bp']:
-                    options.append('b')
-
-                if state['?']['to_ep']:
-                    options.append('e')
-
-                return options
-
-            # See: Duel.msg_handlers['battle_attack']
-            # See: Duel.msg_handlers['display_battle_menu']
-            case 0x8:
-                # See: Duel.msg_handlers['select_option']
-                # Options for battle phase
-                if state['?'].get('requirement', None) == 'EFFECT':
-                    return state['?']['choices']
-
-                options = []
-
-                # Perform attack. The target to attack is random selected.
-                options.extend(list(map(lambda x: 'a\r\n' + x, state['?']['attackable'])))
-
-                if state['?']['to_m2']:
-                    options.append('m')
-
-                if state['?']['to_ep']:
-                    options.append('e')
-
-                return options
-
-            case 0x200:
-                if state['?']['requirement'] != 'SELECT':
-                    raise ValueError(f"requirement is not SELECT, but {state['?']['requirement']}")
-
-                # See: Duel.msg_handlers['select_card']
-                # !! Cannot hold more than 6 cards in hand
-                min_cards = state['?']['min']
-
-                # ['1', '2', '3', '4', '5', '6', '7', ... ]
-                indices = list(map(str, range(1, len(state['?']['choices']) + 1)))
-
-                # [('1', '2'), ('1', '3'), ... ]
-                options = list(combinations(indices, min_cards))
-
-                # [('1 2'), ('1 3'), ... ]
-                options = list(map(lambda x: ' '.join(x), options))
-
-                return options
-
-            case _:
-                return ['e', ]
-
-=======
->>>>>>> origin/env
     @abstractmethod
     def react(self, state: GameState, actions: List[Action]) -> Action:
         raise NotImplementedError
