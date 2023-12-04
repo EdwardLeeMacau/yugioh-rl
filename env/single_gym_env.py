@@ -8,11 +8,12 @@ from gymnasium.envs.registration import register
 
 import numpy as np
 
-import itertools
 import logging
-from six import StringIO
 import sys
 import os
+
+from itertools import combinations
+from six import StringIO
 from datetime import datetime
 from multiprocessing import Process
 from threading import Thread, Event
@@ -27,18 +28,20 @@ import torch
 
 from telnetlib import Telnet
 
+#######################
+#   Global Variable   #
+#######################
+Info = Dict
+
 ################
 #   Function   #
 ################
-def game_loop(player: Player, agent: Policy) -> None:
-    while True:
-        terminated, state = player.wait_action()
-        if terminated:
-            break
-
-        action = agent.react(state)
-        player.interact(action)
-
+def game_loop(player: Player, policy: Policy) -> None:
+    terminated, state = player.decode(player.wait)
+    while not terminated:
+        actions = player.list_valid_actions()
+        action = policy.react(state, actions)
+        terminated, state = player.step(action)
     return
 
 #############
@@ -175,15 +178,16 @@ class YGOEnv(gym.Env):
     _opponent: Policy
     _process: Process
 
+    _state: Tuple[GameState, float, bool, bool, Info]
+
     def __init__(self, opponent: Policy = RandomPolicy()):
         super(YGOEnv, self).__init__()
-        # define the players for agent and its opponents
-        # player1 is for the RL agent
-        #self._player1 = YGOPlayer(HOST, PORT, "player7", "player7")
-        #self._player2 = YGOPlayer(HOST, PORT, "player8", "player8")
+        # define the Game and the opponent object
         self._game = None
         self._opponent = opponent
         self._process = None
+
+        self._state = None
 
         # define the action space and the observation space
         self.action_space = spaces.Discrete(32, start=0)
@@ -212,6 +216,12 @@ class YGOEnv(gym.Env):
         # Reset ready for a game
         #self.reset()
 
+    @property
+    def player(self) -> Player:
+        return self._game._player1
+
+    def list_valid_action(self) -> List[Action]:
+        return self.player.list_valid_actions()
     def set_illegal_move_reward(self, penalty: float=0) -> None:
         self._illegal_move_reward = penalty
 
@@ -258,11 +268,8 @@ class YGOEnv(gym.Env):
             multi_hot[self.deck_list.index(ID)] += 1
         return multi_hot
 
-    def _check_valid_action(self, action: str) -> bool:
-        for valid_action in Policy.list_valid_actions(self.current_state_dict):
-            if action in valid_action.split("\r\n"):
-                return True
-        return False
+    def _check_valid_action(self, action: Action) -> bool:
+        return (action in self.list_valid_actions())
 
     def get_action_mask(self) -> np.ndarray:
         mask = np.zeros(shape=(len(self.digit2action.keys()), ))
@@ -271,59 +278,30 @@ class YGOEnv(gym.Env):
                 mask[self.action2digit[sub_valid_action]] = 1
         return mask.astype(np.int8)
 
+    def seed(self, seed=None) -> None:
+        self.np_random, seed = seeding.np_random(seed)
+        return [seed]
+
     def step(self, action: Action) -> Tuple[spaces.Dict, float, bool, bool, Dict]:
         truncate = False
         reward = 0.
         action = self._digit_to_action(action)
         if self._check_valid_action(action):
-            self._game._player1.interact(action)
-            terminated, next_state_dict = self._game._player1.wait_action()
-            self.current_state_dict = next_state_dict
+            terminated, next_state_dict = self.player.step(action)
+
+            self._state = next_state_dict
             next_state = self._dict_to_state_vector(next_state_dict)
+
             if terminated:
                 reward = state.get('score', 0.0)
-                self._game._player1.interact("")
                 next_state, _ = self.reset()
             return next_state, reward, terminated, truncate, {}
         else:
-            next_state = self._dict_to_state_vector(self.current_state_dict)
+            next_state = self._dict_to_state_vector(self._state)
             return next_state, self._illegal_move_reward, False, False, {}
-        """
-        #OLD VERSION
-        done = False
-        truncate = False
-        reward = 0
 
-        terminated, pre_state_dict = self._game._player1.wait_action()
-        pre_state = self._dict_to_state_vector(pre_state_dict)
-        # I am not sure if the "terminated" represents the end of the whole game.
-        # this line should be checked!!!!!!!
-        if not terminated:
-            action = self._digit_to_action(action)
-            self._game._player1.interact(action)
-            _, next_state_dict = self._game._player1.wait_action()
-            
-            if pre_state_dict["state"] == next_state_dict["state"]:
-                # this if loop checks if the action is meaningless.
-                reward = self._illegal_move_reward
-
-                return pre_state, reward, done, truncate, {}
-            next_state = self._dict_to_state_vector(next_state_dict)
-            return next_state, reward, done, truncate, {}
-
-        else:
-            reward, done, truncate = self.last(action)
-            next_state, _ = self.reset()
-            return next_state, reward, terminated, False, {}
-        """
-
-    def last(self) -> Tuple[float, bool, bool]:
-        terminated, state = self._game._player1.wait_action()
-
-        reward = state.get('score', 0.0)
-
-        return reward, terminated, False
-
+    def last(self) -> Tuple[GameState, float, bool, bool, Dict]:
+        return state, {}
 
     def reset(self, seed=None, options=None):
         if self._process is not None:
@@ -331,13 +309,16 @@ class YGOEnv(gym.Env):
 
         if self._game is not None:
             self._game.close()
+
         self._game = Game().start()
+
         self._process = Process(target=game_loop, args=(self._game._player2, self._opponent))
         self._process.start()
-        _, next_state = self._game._player1.wait_action()
-        self.current_state_dict = next_state
-        return self._dict_to_state_vector(next_state), {}
 
+        _, next_state = self.player.decode(self.player.wait())
+        self._state = (state, 0.0, False, False, {})
+
+        return self._dict_to_state_vector(self._state), {}
 
     def render(self, mode='human', close=False):
         raise NotImplementedError()
@@ -350,6 +331,7 @@ if __name__ =="__main__":
     env = gym.make('single_ygo')
     env.reset()
     while True:
+        breakpoint()
         action = env.action_space.sample(mask=env.get_action_mask())
         obs, reward,  done, _, info = env.step(action)
         if done:
