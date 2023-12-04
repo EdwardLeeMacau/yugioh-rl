@@ -3,6 +3,7 @@ import natsort
 from twisted.internet import reactor
 
 from ygo.constants import AMOUNT_RACES, RACES_OFFSET
+from ygo.dump import dump_game_info
 from ygo.duel_reader import DuelReader
 from ygo.parsers.duel_parser import DuelParser
 from ygo.utils import process_duel
@@ -24,6 +25,14 @@ def announce_race(self, player, count, avail):
 		pl.notify("Type %d races separated by spaces." % count)
 		for i, s in enumerate(avail_races_keys):
 			pl.notify("%d: %s" % (i+1, s))
+		pl.notify(dump_game_info(
+			self, pl, **{ '?': {
+				'requirement': 'ANNOUNCE_RACE',
+				'choices': [i for i, _ in enumerate(avail_races_keys)],
+				'min': count,
+				'max': count,
+			}}
+		))
 		pl.notify(DuelReader, r, no_abort="Invalid entry.", restore_parser=DuelParser)
 	def error(text):
 		pl.notify(text)

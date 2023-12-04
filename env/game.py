@@ -1,16 +1,15 @@
-import json
-import os
 import random
 
 from abc import ABC, abstractmethod
-from datetime import datetime
 from enum import IntEnum
-from itertools import combinations
-from threading import Thread
 from typing import List, Tuple
 
+<<<<<<< HEAD
 from env import accounts
 from env.player import Player, GameState, Action
+=======
+from .player import Player, GameState, Action
+>>>>>>> origin/env
 
 class RockPaperScissorsAction(IntEnum):
     Rock = 1
@@ -28,6 +27,7 @@ def determine_first_player(p1: Player, p2: Player) -> Tuple[Player]:
     return (p1, p2) if res else (p2, p1)
 
 class Policy(ABC):
+<<<<<<< HEAD
     @staticmethod
     def list_valid_actions(state: GameState) -> List[Action]:
         """ Decide an action from the valid actions. """
@@ -148,8 +148,10 @@ class Policy(ABC):
             case _:
                 return ['e', ]
 
+=======
+>>>>>>> origin/env
     @abstractmethod
-    def react(self, state: GameState) -> Action:
+    def react(self, state: GameState, actions: List[Action]) -> Action:
         raise NotImplementedError
 
 class Game:

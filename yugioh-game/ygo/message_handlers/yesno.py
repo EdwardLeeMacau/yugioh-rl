@@ -2,6 +2,7 @@ import io
 from twisted.internet import reactor
 
 from ygo.card import Card
+from ygo.dump import dump_game_info
 from ygo.parsers.yes_or_no_parser import yes_or_no_parser
 from ygo.utils import process_duel
 
@@ -30,6 +31,17 @@ def yesno(self, player, desc):
 	else:
 		opt = "String %d" % desc
 		opt = pl.strings['system'].get(desc, opt)
+
+	pl.notify(dump_game_info(
+		self, pl, **{ '?': {
+			'requirement': 'YESNO',
+			'question': opt,
+			'choices': ['y', 'n'],
+			'type': 'spec',
+			'min': 1,
+			'max': 1,
+		}}
+	))
 	pl.notify(yes_or_no_parser, opt, yes, no=no, restore_parser=old_parser)
 
 MESSAGES = {13: msg_yesno}

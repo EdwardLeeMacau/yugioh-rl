@@ -1,28 +1,30 @@
 import io
 import json
 import os
+import pysnooper
 
+from itertools import combinations
 from pprint import pformat
 from telnetlib import Telnet
-from typing import Dict, Tuple
+from typing import Dict, List, Tuple
 
 from . import accounts
 from .accounts import Account
+from .state import StateMachine, GameState, Action
 
-
-Action = str
-GameState = Dict
 
 # Tee-Like object in Python:
 # https://python-forum.io/thread-40226.html
 
 class Player:
     """ Class to wrap the communication with the server. """
-    # Private attributes
     _host: str
     _port: int
     _username: str
     _password: str
+
+    _sm: StateMachine
+    _state: GameState
 
     _log: io.StringIO
     _server: Telnet
@@ -32,42 +34,18 @@ class Player:
         # A blocking call for simplicity.
         account = accounts.allocate()
 
-        host = account.host
-        port = account.port
-        username = account.username
-        password = account.password
-
         # create a log file
         os.makedirs('logs', exist_ok=True)
-        self._log = open(f'logs/{username}.log', 'wb')
+        self._log = open(f'logs/{account.username}.log', 'wb')
 
         # member fields
-        self._host = host
-        self._port = port
-        self._username = username
-        self._password = password
+        self._host = account.host
+        self._port = account.port
+        self._username = account.username
+        self._password = account.password
 
         # create a connection to the server
-        self._server = Telnet(host, port)
-
-        # sign in to server
-        self._read_until(b'\r\n')
-        self._write(username.encode() + b'\r\n')
-        self._read_until(b'\r\n')
-        self._write(password.encode() + b'\r\n')
-
-    def close(self) -> None:
-        """ Free resources when the object is deleted. """
-        if bool(self._server.sock) == True:
-            self._server.close()
-
-        if not self._log.closed:
-            self._log.close()
-
-        accounts.free(Account(
-            host=self._host, port=self._port,
-            username=self._username, password=self._password
-        ))
+        self.open()
 
     def _write(self, msg: bytes) -> None:
         self._server.write(msg)
@@ -86,9 +64,35 @@ class Player:
 
         return msg
 
+    def open(self) -> None:
+        """ Open a connection to the server. """
+        self._server = Telnet(self._host, self._port)
+
+        self._read_until(b'\r\n')
+        self._write(self.username.encode() + b'\r\n')
+        self._read_until(b'\r\n')
+        self._write(self._password.encode() + b'\r\n')
+
+    def close(self) -> None:
+        """ Free resources when the object is deleted. """
+        if bool(self._server.sock) == True:
+            self._server.close()
+
+        if not self._log.closed:
+            self._log.close()
+
+        accounts.free(Account(
+            host=self._host, port=self._port,
+            username=self._username, password=self._password
+        ))
+
     @property
     def username(self) -> str:
         return self._username
+
+    # --------------------------------------------------------------------------
+    # Actions for game initializing
+    # --------------------------------------------------------------------------
 
     def create_room(self) -> None:
         # create room
@@ -140,7 +144,15 @@ class Player:
         self._read_until(b"@abort to abort.\r\n")
         self._write(b"1\r\n")
 
-    def wait_action(self) -> Tuple[bool, GameState]:
+    # --------------------------------------------------------------------------
+    # Player's actions
+    # --------------------------------------------------------------------------
+
+    def list_valid_actions(self) -> List[Action]:
+        """ Decide an action from the valid actions. """
+        return self._sm.list_valid_actions()
+
+    def wait(self) -> Dict:
         """ Wait until the server ask player to decide an action.
 
         Assume that the server would send a message like this:
@@ -151,11 +163,8 @@ class Player:
 
         Returns
         -------
-        terminated : bool
-            Whether the game is over.
-
-        state : GameState
-            The state of the game.
+        embed : Dict
+            Game state and valid actions in JSON format.
         """
 
         # Block I/O until the separator is found
@@ -170,12 +179,45 @@ class Player:
         self._log.write(bytes(pformat(embed), 'utf-8'))
         self._log.flush()
 
+        return embed
+
+    def decode(self, embed: Dict) -> Tuple[bool, GameState]:
+        """
+        Returns
+        -------
+        terminated : bool
+            Whether the game is over.
+
+        state : GameState
+            The state of the game.
+        """
         # Check if the key 'terminated' is in the JSON string
         # 1: win, -1: lose, 0: draw
         if 'terminated' in embed:
             return True, {'score': embed['score']}
 
-        return False, embed
+        # Auto deal with the PLACE requirement
+        while '?' in embed and embed['?']['requirement'] == 'PLACE':
+            n = embed['?']['min']
+            response = ' '.join(embed['?']['choices'][:n])
 
-    def interact(self, action: Action):
-        self._write(str(action).encode() + b'\r\n')
+            self._write(response.encode() + b'\r\n')
+            embed = self.wait()
+
+        self._sm = StateMachine.from_dict(embed['?']) if '?' in embed else None
+        self._state = embed['state']
+
+        if 'terminated' in embed:
+            return True, {'score': embed['score']}
+
+        return False, embed['state']
+
+    def step(self, action: Action) -> Tuple[bool, GameState]:
+        if not self._sm.step(action):
+            return False, self._state
+
+        # Form a complete message to server
+        self._write(self._sm.to_string().encode() + b'\r\n')
+
+        # Wait for next decision
+        return self.decode(self.wait())

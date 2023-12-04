@@ -3,6 +3,7 @@ import natsort
 from twisted.internet import reactor
 
 from ygo.constants import AMOUNT_ATTRIBUTES, ATTRIBUTES_OFFSET
+from ygo.dump import dump_game_info
 from ygo.duel_reader import DuelReader
 from ygo.parsers.duel_parser import DuelParser
 from ygo.utils import process_duel
@@ -25,6 +26,14 @@ def announce_attrib(self, player, count, avail):
 		pl.notify("Type %d attributes separated by spaces." % count)
 		for i, attrib in enumerate(avail_attributes_keys):
 			pl.notify("%d. %s" % (i + 1, attrib))
+		pl.notify(dump_game_info(
+			self, pl, **{ '?': {
+				'requirement': 'ANNOUNCE_ATTRIBUTE',
+				'choices': [i for i, _ in enumerate(avail_attributes_keys)],
+				'min': count,
+				'max': count,
+			}}
+		))
 		pl.notify(DuelReader, r, no_abort="Invalid command", restore_parser=DuelParser)
 	def r(caller):
 		items = caller.text.split()

@@ -32,6 +32,7 @@ def display_battle_menu(self, pl):
 			return self.display_battle_menu(pl)
 	pl.notify(dump_game_info(
 		self, pl, **{ '?': {
+			'requirement': 'BATTLE',
 			'attackable': [card.get_spec(pl) for card in self.attackable],
 			'activatable': [card.get_spec(pl) for card in self.activatable],
 			'to_m2': self.to_m2,

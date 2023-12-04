@@ -10,7 +10,7 @@ from tqdm import tqdm
 
 def main():
     env = SinglePlayerEnv(opponent=RandomPolicy())
-    # env.reset()
+    env.reset()
 
     # ---------------------- TODO: Implement the policy -----------------------
     policy = RandomPolicy()
@@ -18,7 +18,7 @@ def main():
     # -------------------------------------------------------------------------
 
     # Stress test: run 10000 games.
-    for _ in tqdm(range(10000)):
+    for _ in tqdm(range(10000), ncols=0):
         start = datetime.now().strftime('%Y%m%d-%H%M%S')
         terminated = False
         trajectories: List[Tuple[GameState, Action]] = []
@@ -28,7 +28,8 @@ def main():
             if terminated:
                 break
 
-            action = policy.react(state)
+            actions = env.list_valid_actions()
+            action = policy.react(state, actions)
             env.step(action)
 
         # with open(os.path.join('logs', f'{start}-{env._game._player1.username}.json'), 'w') as f:
