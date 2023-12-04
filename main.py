@@ -28,7 +28,8 @@ def main():
             if terminated:
                 break
 
-            action = policy.react(state)
+            actions = env.list_valid_actions(state)
+            action = policy.react(state, actions)
             env.step(action)
 
         # with open(os.path.join('logs', f'{start}-{env._game._player1.username}.json'), 'w') as f:

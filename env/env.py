@@ -7,10 +7,8 @@ SinglePlayerEnv: 1 learner vs 1 RandomAgent
  MultiPlayerEnv: 1 learner vs 1 learner
 """
 
-import json
-import os
 from datetime import datetime
-from threading import Event, Thread
+from itertools import combinations
 from multiprocessing import Process
 from typing import Dict, List, Tuple
 
@@ -27,7 +25,8 @@ def game_loop(player: Player, agent: Policy) -> None:
         if terminated:
             break
 
-        action = agent.react(state)
+        actions = player.list_valid_actions(state)
+        action = agent.react(state, actions)
         player.interact(action)
 
     return
@@ -41,7 +40,10 @@ class SinglePlayerEnv:
         self._game = None
         self._opponent = opponent
         self._process = None
-        # self._event = Event()
+
+    def list_valid_actions(self, state: GameState) -> List[Action]:
+        """ List all valid actions given the state. """
+        return self._game._player1.list_valid_actions(state)
 
     def reset(self, seed=None):
         """ Reset the game.
