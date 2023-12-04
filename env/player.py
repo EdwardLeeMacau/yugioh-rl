@@ -1,6 +1,7 @@
 import io
 import json
 import os
+import pysnooper
 
 from itertools import combinations
 from pprint import pformat
@@ -9,10 +10,8 @@ from typing import Dict, List, Tuple
 
 from . import accounts
 from .accounts import Account
+from .state import StateMachine, GameState, Action
 
-
-Action = str
-GameState = Dict
 
 # Tee-Like object in Python:
 # https://python-forum.io/thread-40226.html
@@ -24,8 +23,8 @@ class Player:
     _username: str
     _password: str
 
+    _sm: StateMachine
     _state: GameState
-    _action_queue: List[Action]
 
     _log: io.StringIO
     _server: Telnet
@@ -44,9 +43,6 @@ class Player:
         self._port = account.port
         self._username = account.username
         self._password = account.password
-
-        self._state = {}
-        self._action_queue = []
 
         # create a connection to the server
         self.open()
@@ -75,7 +71,7 @@ class Player:
         self._read_until(b'\r\n')
         self._write(self.username.encode() + b'\r\n')
         self._read_until(b'\r\n')
-        self._write(self.password.encode() + b'\r\n')
+        self._write(self._password.encode() + b'\r\n')
 
     def close(self) -> None:
         """ Free resources when the object is deleted. """
@@ -93,6 +89,10 @@ class Player:
     @property
     def username(self) -> str:
         return self._username
+
+    # --------------------------------------------------------------------------
+    # Actions for game initializing
+    # --------------------------------------------------------------------------
 
     def create_room(self) -> None:
         # create room
@@ -144,89 +144,15 @@ class Player:
         self._read_until(b"@abort to abort.\r\n")
         self._write(b"1\r\n")
 
-    def list_valid_actions(self, state: GameState) -> List[Action]:
+    # --------------------------------------------------------------------------
+    # Player's actions
+    # --------------------------------------------------------------------------
+
+    def list_valid_actions(self) -> List[Action]:
         """ Decide an action from the valid actions. """
-        options = []
+        return self._sm.list_valid_actions()
 
-        match state['?'].get('requirement', None):
-            # See: Duel.msg_handler['select_*']
-            case 'SELECT' | 'TRIBUTE':
-                if (n := state['?'].get('foreach', None)) is None:
-                    n = state['?']['min']
-
-                match state['?'].get('type', 'indices'):
-                    case 'spec':
-                        # 'type': spec
-                        #
-                        # Return card specs to select, assume `n` is 1
-                        # >>> ['h3', 'h4', 's5', ... ]
-                        options = state['?']['choices']
-                    case 'indices':
-                        # 'type': indices
-                        #
-                        # Return indices of cards to select
-                        # >>> [('1 2'), ('1 3'), ... ]
-                        indices = list(map(str, range(1, len(state['?']['choices']) + 1)))
-                        options = list(combinations(indices, n))
-                        options = list(map(lambda x: ' '.join(x), options))
-                    case _:
-                        raise ValueError(f"unknown type {state['?']['type']}")
-
-            # See: Duel.msg_handler['select_place']
-            #
-            # PLACE monster cards / spell cards
-            # Auto-decidable. Not different in YGO04.
-            case 'PLACE':
-                n = state['?']['min']
-                options = [' '.join(state['?']['choices'][:n])]
-
-            # See: Duel.msg_handler['idle_action']
-            case 'IDLE':
-                # Perform face-up attack position summon. The place to summon is random selected.
-                options.extend(list(map(lambda x: x + '\r\ns', state['?']['summonable'])))
-
-                # Perform face-down defense position summon. The place to summon is random selected.
-                options.extend(list(map(lambda x: x + '\r\nm', state['?']['mset'])))
-
-                # Perform set spell/trap card. The place to set is random selected.
-                # options.extend(list(map(lambda x: x + '\r\nt', state['?']['set'])))
-
-                # Perform re-position.
-                options.extend(list(map(lambda x: x + '\r\nr', state['?']['repos'])))
-
-                # Perform special summon. The place to summon is random selected.
-                options.extend(list(map(lambda x: x + '\r\nc', state['?']['spsummon'])))
-
-                if state['?']['to_bp']:
-                    options.append('b')
-
-                if state['?']['to_ep']:
-                    options.append('e')
-
-            # See: Duel.msg_handlers['select_option']
-            # Options for battle phase
-            case 'EFFECT':
-                return state['?']['choices']
-
-            case 'BATTLE':
-                # Perform attack. The target to attack is random selected.
-                options.extend(list(map(lambda x: 'a\r\n' + x, state['?']['attackable'])))
-
-                # Perform activate. The card to activate is random selected.
-                options.extend(list(map(lambda x: 'c\r\n' + x, state['?']['activatable'])))
-
-                if state['?']['to_m2']:
-                    options.append('m')
-
-                if state['?']['to_ep']:
-                    options.append('e')
-
-            case _:
-                raise ValueError(f"unknown requirement {state['?'].get('requirement', None)}")
-
-        return options
-
-    def wait_action(self) -> Tuple[bool, GameState]:
+    def wait(self) -> Dict:
         """ Wait until the server ask player to decide an action.
 
         Assume that the server would send a message like this:
@@ -237,11 +163,8 @@ class Player:
 
         Returns
         -------
-        terminated : bool
-            Whether the game is over.
-
-        state : GameState
-            The state of the game.
+        embed : Dict
+            Game state and valid actions in JSON format.
         """
 
         # Block I/O until the separator is found
@@ -256,12 +179,41 @@ class Player:
         self._log.write(bytes(pformat(embed), 'utf-8'))
         self._log.flush()
 
+        return embed
+
+    def decode(self, embed: Dict) -> Tuple[bool, GameState]:
+        """
+        Returns
+        -------
+        terminated : bool
+            Whether the game is over.
+
+        state : GameState
+            The state of the game.
+        """
         # Check if the key 'terminated' is in the JSON string
         # 1: win, -1: lose, 0: draw
         if 'terminated' in embed:
             return True, {'score': embed['score']}
 
-        return False, embed
+        # Auto deal with the PLACE requirement
+        while embed['?']['requirement'] == 'PLACE':
+            n = embed['?']['min']
+            response = ' '.join(embed['?']['choices'][:n])
 
-    def interact(self, action: Action):
-        self._write(str(action).encode() + b'\r\n')
+            self._write(response.encode() + b'\r\n')
+            embed = self.wait()
+
+        self._sm = StateMachine.from_dict(embed['?'])
+        self._state = embed['state']
+        return False, embed['state']
+
+    def step(self, action: Action) -> Tuple[bool, GameState]:
+        if not self._sm.step(action):
+            return False, self._state
+
+        # Form a complete message to server
+        self._write(self._sm.to_string().encode() + b'\r\n')
+
+        # Wait for next decision
+        return self.decode(self.wait())

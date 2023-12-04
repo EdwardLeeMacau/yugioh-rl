@@ -18,7 +18,7 @@ def main():
     # -------------------------------------------------------------------------
 
     # Stress test: run 10000 games.
-    for _ in tqdm(range(10000)):
+    for _ in tqdm(range(10000), ncols=0):
         start = datetime.now().strftime('%Y%m%d-%H%M%S')
         terminated = False
         trajectories: List[Tuple[GameState, Action]] = []
@@ -28,7 +28,7 @@ def main():
             if terminated:
                 break
 
-            actions = env.list_valid_actions(state)
+            actions = env.list_valid_actions()
             action = policy.react(state, actions)
             env.step(action)
 
