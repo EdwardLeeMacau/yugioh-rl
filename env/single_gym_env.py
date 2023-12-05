@@ -217,6 +217,17 @@ class YGOEnv(gym.Env):
         "r39": 151,
         "r40": 152,
 
+        "os1": 153,
+        "os2": 154,
+        "os3": 155,
+        "os4": 156,
+        "os5": 157,
+
+        "om1": 158,
+        "om2": 159,
+        "om3": 160,
+        "om4": 161,
+        "om5": 162,
     }
 
     digit2action = {value: key for key, value in action2digit.items()}
@@ -294,10 +305,10 @@ class YGOEnv(gym.Env):
                                             "oppo_deck": spaces.Discrete(41, start=0),
                                             "oppo_grave": spaces.MultiDiscrete([4 for i in range(40)]),
                                             "oppo_removed": spaces.MultiDiscrete([4 for i in range(40)]),
-                                            "t_agent_m": spaces.MultiDiscrete([[40, 5] for i in range(5)], dtype=np.int32),
-                                            "t_oppo_m": spaces.MultiDiscrete([[40, 5] for i in range(5)], dtype=np.int32),
-                                            "t_agent_s": spaces.MultiDiscrete([[40, 5] for i in range(5)], dtype=np.int32),
-                                            "t_oppo_s": spaces.MultiDiscrete([[40, 5] for i in range(5)], dtype=np.int32),
+                                            "t_agent_m": spaces.MultiDiscrete([40, 5, 40, 5, 40, 5, 40, 5, 40, 5], dtype=np.int64),
+                                            "t_oppo_m": spaces.MultiDiscrete([40, 5, 40, 5, 40, 5, 40, 5, 40, 5], dtype=np.int64),
+                                            "t_agent_s": spaces.MultiDiscrete([40, 5, 40, 5, 40, 5, 40, 5, 40, 5], dtype=np.int64),
+                                            "t_oppo_s": spaces.MultiDiscrete([40, 5, 40, 5, 40, 5, 40, 5, 40, 5], dtype=np.int64),
                                             })
         
         # Set negative reward (penalty) for illegal moves (optional)
@@ -321,15 +332,15 @@ class YGOEnv(gym.Env):
         except:
             breakpoint()
         frame_dict = {
-            "phase": game_state['phase'],
-            "agent_LP": game_state['score']['player']['lp'] / 8000.,
+            "phase": np.array([game_state['phase']]),
+            "agent_LP": np.array([game_state['score']['player']['lp'] / 8000.]),
             "agent_hand": self._IDList_to_MultiHot(game_state['hand']),
-            "agent_deck": game_state['score']['player']['deck'],
+            "agent_deck": np.array([game_state['score']['player']['deck']]),
             "agent_grave": self._IDList_to_MultiHot(game_state['score']['player']['grave']),
             "agent_removed": self._IDList_to_MultiHot(game_state['score']['player']['removed']),
-            "oppo_LP": game_state['score']['opponent']['lp'] / 8000.,
-            "oppo_hand": game_state['score']['opponent']['hand'],
-            "oppo_deck": game_state['score']['opponent']['deck'],
+            "oppo_LP": np.array([game_state['score']['opponent']['lp'] / 8000.]),
+            "oppo_hand": np.array([game_state['score']['opponent']['hand']]),
+            "oppo_deck": np.array([game_state['score']['opponent']['deck']]),
             "oppo_grave": self._IDList_to_MultiHot(game_state['score']['opponent']['grave']),
             "oppo_removed": self._IDList_to_MultiHot(game_state['score']['opponent']['removed']),
             "t_agent_m": self._IDStateList_to_vector(game_state['table']['player']['monster']),
@@ -351,11 +362,11 @@ class YGOEnv(gym.Env):
                 frame_array[i, 0] = self.deck_list.index(id_state_list[i][0])
             except:
                 frame_array[i, 0] = self.deck_list.index("token")
-            frame_array[i, 1] = id_state_list[i][0]
-        return frame_array
+            frame_array[i, 1] = id_state_list[i][1]
+        return frame_array.reshape(1, -1)
 
     def _IDList_to_MultiHot(self, id_list: List) -> np.ndarray:
-        multi_hot = np.zeros(shape=(40, ), dtype=np.int32)
+        multi_hot = np.zeros(shape=(40, ), dtype=np.int64)
         # naive method
         # can be accelarated
         for ID in id_list:
@@ -428,10 +439,11 @@ if __name__ =="__main__":
     env = gym.make('single_ygo')
     env.reset()
     n = 0
-    pbar = tqdm(total = 1001)
+    pbar = tqdm(total = 3000)
     while True:
         action = env.action_space.sample(mask=env.get_action_mask())
         obs, reward,  done, _, info = env.step(action)
+        breakpoint()
         if done:
             pbar.update(1)
         if n > 1000:
