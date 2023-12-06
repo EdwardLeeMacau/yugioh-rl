@@ -1,4 +1,5 @@
 import pysnooper
+from collections import defaultdict
 from typing import Dict, List, Tuple
 
 Action = str
@@ -13,67 +14,33 @@ class StateMachine:
         self._current = state_dict
         self._queue = []
 
-    def list_valid_actions(self) -> Tuple[List[Action], List[Action]]:
-        actions, cards = [], []
+    def list_valid_actions(self, spec=False) -> Tuple[List[Action],
+                                                      List[Dict[Action, str]]]:
+        """ List valid actions.
 
+        Parameters
+        ----------
+        spec : bool
+            If True, return card specs instead of codes. Default: False.
+        """
         match self._current.get('requirement', None):
-            case 'BATTLE':
-                cards.extend(self._current['attackable'])
-                cards.extend(self._current['activatable'])
-                cards = list(set(cards))
+            case 'BATTLE' | 'IDLE':
+                return (self._current['options'], {})
 
-                if self._current['to_m2']:
-                    actions.append('m')
+            case 'BATTLE_ACTION' | 'IDLE_ACTION':
+                action = self._queue[-1]
+                target = {
+                    card[1] : card[0] for card in self._current['targets'][action]
+                }
 
-                if self._current['to_ep']:
-                    actions.append('e')
-
-            case 'BATTLE_ACTION':
-                if self._queue[-1] in self._current['attackable']:
-                    actions.append('a')
-
-                if self._queue[-1] in self._current['activatable']:
-                    actions.append('c')
+                return ([], target, )
 
             case 'EFFECT':
+                breakpoint()
                 actions.append(self._current['effect'])
 
-            case 'IDLE':
-                cards.extend(self._current['summonable'])
-                cards.extend(self._current['mset'])
-                cards.extend(self._current['repos'])
-                cards.extend(self._current['spsummon'])
-                cards.extend(self._current['set'])
-                cards.extend(self._current['activate'])
-
-                cards = list(set(cards))
-
-                if self._current['to_bp']:
-                    actions.append('b')
-
-                if self._current['to_ep']:
-                    actions.append('e')
-
-            case 'IDLE_ACTION':
-                if self._queue[-1] in self._current['summonable']:
-                    actions.append('s')
-
-                if self._queue[-1] in self._current['mset']:
-                    actions.append('m')
-
-                if self._queue[-1] in self._current['repos']:
-                    actions.append('r')
-
-                if self._queue[-1] in self._current['spsummon']:
-                    actions.append('c')
-
-                if self._queue[-1] in self._current['set']:
-                    actions.append('t')
-
-                if self._queue[-1] in self._current['activate']:
-                    actions.append('v')
-
             case 'SELECT' | 'TRIBUTE' | 'YESNO' | "ANNOUNCE_RACE":
+                breakpoint()
                 match self._current.get('type', 'indices'):
                     case 'spec':
                         # 'type': spec
@@ -112,7 +79,7 @@ class StateMachine:
                 self._current['requirement'] = 'BATTLE_ACTION'
                 return False
 
-            case 'BATTLE_ACTION':
+            case 'BATTLE_ACTION' | 'IDLE_ACTION':
                 self._queue.insert(0, action)
                 return True
 
@@ -129,13 +96,12 @@ class StateMachine:
                 self._current['requirement'] = 'IDLE_ACTION'
                 return False
 
-            case 'IDLE_ACTION':
-                self._queue.append(action)
-                return True
-
             case 'SELECT' | 'TRIBUTE' | 'YESNO' | "ANNOUNCE_RACE":
                 self._queue.append(action)
                 return len(self._queue) >= self._current.get('foreach', self._current['min'])
+
+            case _:
+                raise ValueError(f"Unknown requirement: {self._current.get('requirement', None)}")
 
     @classmethod
     def from_dict(cls, state_dict: Dict) -> 'StateMachine':

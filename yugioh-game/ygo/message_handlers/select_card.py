@@ -59,11 +59,13 @@ def select_card(self, player, cancelable, min_cards, max_cards, cards: List[Card
 			pl.notify(pl._("Select %d to %d cards to tribute separated by spaces:") % (min_cards, max_cards))
 		else:
 			pl.notify(pl._("Select %d to %d cards separated by spaces:") % (min_cards, max_cards))
+
+		# Inject a JSON string to indicate which cards are usable
 		pl.notify(dump_game_info(
-			self, pl, **{ '?': {
+			self, pl, **{ 'actions': {
 				'requirement': 'TRIBUTE' if is_tribute else 'SELECT',
 				'min': min_cards, 'max': max_cards, 'type': 'spec',
-				'choices': list(pl.card_list.keys()),
+				'options': [], 'targets': [(k, v.code) for k, v in pl.card_list.keys()],
 			}}
 		))
 		for i, c in enumerate(_cards.values()):

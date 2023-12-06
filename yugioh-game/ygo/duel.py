@@ -9,7 +9,6 @@ import os
 import io
 import struct
 import random
-import pysnooper
 import binascii
 import pkgutil
 import re
@@ -91,7 +90,6 @@ class Duel(Joinable):
 		self.players = [None, None]
 		self.tag_players = []
 		self.lp = [8000, 8000]
-		self.remain_normal_summon = [1, 1]
 		self.started = False
 		self.message_map = {}
 		self.state = ''

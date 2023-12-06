@@ -38,9 +38,9 @@ def select_position(self, player, card, positions):
 		choices.append(POSITION.FACEDOWN_DEFENSE)
 
 	pl.notify(dump_game_info(
-		self, pl, **{ '?': {
+		self, pl, **{ 'actions': {
 			'requirement': 'SELECT', 'min': 1, 'max': 1,
-			'choices': choices,
+			'options': choices,
 		}}
 	))
 	pl.notify(m)

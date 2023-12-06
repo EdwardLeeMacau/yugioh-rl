@@ -197,19 +197,18 @@ class Player:
             return True, {'score': embed['score']}
 
         # Auto deal with the PLACE requirement
-        while '?' in embed and embed['?']['requirement'] == 'PLACE':
-            n = embed['?']['min']
-            response = ' '.join(embed['?']['choices'][:n])
+        while 'actions' in embed and embed['actions']['requirement'] == 'PLACE':
+            n = embed['actions']['min']
+            response = ' '.join(embed['actions']['options'][:n])
 
             self._write(response.encode() + b'\r\n')
             embed = self.wait()
 
-        self._sm = StateMachine.from_dict(embed['?']) if '?' in embed else None
-        self._state = embed['state']
-
         if 'terminated' in embed:
             return True, {'score': embed['score']}
 
+        self._sm = StateMachine.from_dict(embed['actions']) if 'actions' in embed else None
+        self._state = embed['state']
         return False, embed['state']
 
     def step(self, action: Action) -> Tuple[bool, GameState]:

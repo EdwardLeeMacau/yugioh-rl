@@ -58,9 +58,10 @@ def select_unselect_card(
       pl.notify("%d: %s (%s)" % (i+1, name, state))
 
     pl.notify(dump_game_info(
-      self, pl, **{ '?': {
-        'requirement': 'SELECT', 'foreach': 1, 'min': min, 'max': max, 'type': 'spec',
-        'choices': list(_select_cards.keys()),
+      self, pl, **{ 'actions': {
+        'requirement': 'SELECT', 'foreach': 1, 'min': min, 'max': max,
+        'options': [],
+        'targets': [(k, v.code) for k, v in _select_cards.items()],
       }}
     ))
     pl.notify(DuelReader, f, no_abort="Invalid command", restore_parser=DuelParser)

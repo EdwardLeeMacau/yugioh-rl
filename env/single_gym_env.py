@@ -7,6 +7,7 @@ from gymnasium.utils import seeding
 from gymnasium.envs.registration import register
 
 import numpy as np
+import pysnooper
 
 import logging
 import sys
@@ -19,7 +20,7 @@ from six import StringIO
 from datetime import datetime
 from multiprocessing import Process
 from threading import Thread, Event
-from typing import Dict, List, Tuple
+from typing import Dict, List, Tuple, Set
 from tqdm import tqdm
 from telnetlib import Telnet
 
@@ -136,7 +137,7 @@ class YGOEnv(gym.Env):
 
     # Enumerate actions
     _ACTIONS = [
-        *_DECK_LIST,
+        # *_DECK_LIST,
         *_DECK_LIST,
         *_RACES, # Announce races
         "e", # enter end phase
@@ -155,11 +156,14 @@ class YGOEnv(gym.Env):
         '2',
     ]
 
-    # action (string) -> action (int)
+    # action (string | CardID) -> action (int)
     ACTION2DIGITS = { action: i for i, action in enumerate(_ACTIONS) }
 
-    # action (int) -> action (string)
+    # action (int) -> action (string | CardID)
     DIGITS2ACTION = { value: key for key, value in ACTION2DIGITS.items() }
+
+    # phase (int) -> phase (int)
+    PHASE2DIGITS = { 1: 0, 2: 1, 4: 2, 8: 3, 256: 4, 512: 5 }
 
     # Type hinting for public fields.
 
@@ -243,36 +247,15 @@ class YGOEnv(gym.Env):
     def set_illegal_move_reward(self, penalty: float=0) -> None:
         self._illegal_move_reward = penalty
 
-    def _spec_to_action(self, state: Dict, cards: List[Action]):
-        """ Convert the spec (e.g., 'h1', 's1', 'om2') of the cards into the action space. """
-        spec_map: Dict[str, int] = {}
-        for c in cards:
-            is_opponent = c[0] == 'o'
-            position, index = \
-                (c[1], int(c[2:]) - 1) if is_opponent else (c[0], int(c[1:]) - 1)
+    def _decode_action(self, action: int) -> str:
+        # Decode the action as server's format first.
+        # If the action is related to a card (int), then further decode it as a position code.
+        action: str | int = self.DIGITS2ACTION[action]
+        if self._spec_unmap.get(action, None) is not None:
+            action = self._spec_unmap[action]
+        return action
 
-            match position:
-                case 'h':
-                    card_id = state['hand'][index]
-                case 's':
-                    card_id = state['table']['player']['spell'][index][0]
-                case 'm':
-                    card_id = state['table']['player']['monster'][index][0]
-                case 'g':
-                    card_id = state['score']['player']['grave'][index]
-                case 'r':
-                    card_id = state['score']['player']['removed'][index]
-                case _:
-                    raise ValueError(f"Invalid card type: {position}")
-
-            spec_map[c] = \
-                self._DECK_LIST.index(card_id) + (len(self._DECK_LIST) if is_opponent else 0)
-
-        # ! Possible not 1-1 mapping
-        self._spec_map = spec_map
-        self._spec_unmap = { v: k for k, v in spec_map.items() }
-
-    def _encode_state(self, game_state: Dict, actions: Tuple[List[Action], List[Action]]):
+    def _encode_state(self, game_state: Dict, actions: Tuple[List[Action], Dict[Action, Set[str]]]):
         """ Encode the game state into the tensor.
 
         This function changes the interval variables `_action_mask`, `_state` and `_spec_map`.
@@ -285,28 +268,32 @@ class YGOEnv(gym.Env):
         actions: Tuple[List[Action], List[Action]]
             The list of valid actions, which is composed of parts of actions and cards.
         """
-        actions, cards = actions
+        # Utilities
+        options, cards = actions
+        player, opponent = game_state['player'], game_state['opponent']
 
-        self._spec_to_action(game_state, cards)
-        cards = map(lambda x: self._spec_map[x], cards)
-        actions = map(lambda x: self.ACTION2DIGITS[x], actions)
+        # Prepare `self._spec_unmap` for future usage.
+        self._spec_unmap = cards
 
         # Compose the action mask.
         mask = np.zeros(shape=(len(self._ACTIONS), ), dtype=np.int8)
-        for a in chain(actions, cards):
-            mask[a] = 1
+        for opt in map(lambda x: self.ACTION2DIGITS[x], chain(options, cards.keys())):
+            mask[opt] = 1
 
         self._action_mask = mask
         self._state = {
-            "phase": game_state['phase'],
+
+            # --------------------------------- Games information ---------------------------------
+
+            "phase": np.eye(6)[self.PHASE2DIGITS[game_state['phase']]],
 
             # -------------------------------- Players information --------------------------------
 
-            "agent_LP": game_state['score']['player']['lp'] / 8000.,
-            "agent_hand": self._IDList_to_MultiHot(game_state['hand']),
-            "agent_deck": game_state['score']['player']['deck'],
-            "agent_grave": self._IDList_to_MultiHot(game_state['score']['player']['grave']),
-            "agent_removed": self._IDList_to_MultiHot(game_state['score']['player']['removed']),
+            "agent_LP": np.array([player['lp']]) / 8000.,
+            "agent_hand": self._IDList_to_MultiHot(player['hand']),
+            "agent_deck": np.array([player['deck']]) / 40,
+            "agent_grave": self._IDList_to_MultiHot(player['grave']),
+            "agent_removed": self._IDList_to_MultiHot(player['removed']),
 
             # ------------------------------ Valid action information -----------------------------
 
@@ -314,18 +301,18 @@ class YGOEnv(gym.Env):
 
             # ------------------------------- Opponents information -------------------------------
 
-            "oppo_LP": game_state['score']['opponent']['lp'] / 8000.,
-            "oppo_hand": game_state['score']['opponent']['hand'],
-            "oppo_deck": game_state['score']['opponent']['deck'],
-            "oppo_grave": self._IDList_to_MultiHot(game_state['score']['opponent']['grave']),
-            "oppo_removed": self._IDList_to_MultiHot(game_state['score']['opponent']['removed']),
+            "oppo_LP": np.array([opponent['lp']]) / 8000.,
+            "oppo_hand": np.array([opponent['hand']]) / 40,
+            "oppo_deck": np.array([opponent['deck']]) / 40,
+            "oppo_grave": self._IDList_to_MultiHot(opponent['grave']),
+            "oppo_removed": self._IDList_to_MultiHot(opponent['removed']),
 
             # --------------------------------- Table information ---------------------------------
 
-            "t_agent_m": self._IDStateList_to_vector(game_state['table']['player']['monster']),
-            "t_agent_s": self._IDStateList_to_vector(game_state['table']['player']['spell']),
-            "t_oppo_m": self._IDStateList_to_vector(game_state['table']['opponent']['monster']),
-            "t_oppo_s": self._IDStateList_to_vector(game_state['table']['opponent']['spell']),
+            "t_agent_m": self._IDStateList_to_vector(player['monster']),
+            "t_agent_s": self._IDStateList_to_vector(player['spell']),
+            "t_oppo_m": self._IDStateList_to_vector(opponent['monster']),
+            "t_oppo_s": self._IDStateList_to_vector(opponent['spell']),
         }
 
     @classmethod
@@ -350,7 +337,7 @@ class YGOEnv(gym.Env):
 
     @classmethod
     def _IDList_to_MultiHot(cls, id_list: List[int]) -> np.ndarray:
-        multi_hot = np.zeros(shape=(40, ), dtype=np.int32)
+        multi_hot = np.zeros(shape=(40, ), dtype=np.float32)
 
         for card_id in id_list:
             multi_hot[cls._DECK_LIST.index(card_id)] += 1
@@ -367,8 +354,8 @@ class YGOEnv(gym.Env):
 
         # TODO: Figure out method to guarantee the action is valid from the policy model.
         if self._action_mask[action] == 1:
-            action: str = self.DIGITS2ACTION[action]
-            breakpoint()
+            action = self._decode_action(action)
+
             terminated, next_state_dict = self.player.step(action)
             if terminated:
                 reward = next_state_dict.get('score', 0.0)
@@ -444,23 +431,3 @@ class YGOEnv(gym.Env):
 
     def render(self, mode='human', close=False):
         raise NotImplementedError()
-
-if __name__ =="__main__":
-    register(
-        id="single_ygo",
-        entry_point="env.single_gym_env:YGOEnv"
-    )
-
-    env: YGOEnv = gym.make('single_ygo')
-    env.reset()
-    n = 0
-    pbar = tqdm(total = 1001)
-    while True:
-        action = env.action_space.sample(mask=env.action_mask)
-        obs, reward,  done, _, info = env.step(action)
-        if done:
-            pbar.update(1)
-        if n > 1000:
-            breakpoint()
-
-    env.finalize()

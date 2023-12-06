@@ -15,12 +15,13 @@ class RockPaperScissorsAction(IntEnum):
 def determine_first_player(p1: Player, p2: Player) -> Tuple[Player]:
     """ Determine the first player by flipping a coin. """
     a1, a2 = RockPaperScissorsAction.Rock, RockPaperScissorsAction.Scissors
-    a1, a2 = (a1, a2) if (res := random.random() < 0.5) else (a2, a1)
+    # a1, a2 = (a1, a2) if (res := random.random() < 0.5) else (a2, a1)
+    # a1, a2 = a2, a1
 
     p1.play_rock_paper_scissors(a1)
     p2.play_rock_paper_scissors(a2)
 
-    return (p1, p2) if res else (p2, p1)
+    return (p1, p2) # if res else (p2, p1)
 
 class Policy(ABC):
     @abstractmethod

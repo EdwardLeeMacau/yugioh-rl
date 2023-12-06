@@ -7,6 +7,53 @@ from ygo.dump import dump_game_info
 from ygo.parsers.duel_parser import DuelParser
 from ygo.utils import process_duel
 
+def _list_idle_actions(self):
+	options = []
+
+	if self.summonable:
+		options.extend('s')
+	if self.idle_mset:
+		options.extend('m')
+	if self.spsummon:
+		options.extend('c')
+	if self.idle_activate:
+		options.extend('v')
+	if self.repos:
+		options.extend('r')
+	if self.idle_set:
+		options.extend('t')
+	if self.to_bp:
+		options.extend('b')
+	if self.to_ep:
+		options.extend('e')
+
+	return options
+
+def _list_card_info(card, pl):
+	return (card.get_spec(pl), card.code)
+
+def _list_available_cards(self, pl: 'Player'):
+	return {
+		's': [
+			_list_card_info(card, pl) for card in self.summonable
+		],
+		'm': [
+			_list_card_info(card, pl) for card in self.idle_mset
+		],
+		'c': [
+			_list_card_info(card, pl) for card in self.spsummon
+		],
+		'v': [
+			_list_card_info(card, pl) for card in self.idle_activate
+		],
+		'r': [
+			_list_card_info(card, pl) for card in self.repos
+		],
+		't': [
+			_list_card_info(card, pl) for card in self.idle_set
+		],
+	}
+
 def idle_action(self, pl):
 	def prompt():
 		pl.notify(pl._("Select a card on which to perform an action."))
@@ -19,23 +66,10 @@ def idle_action(self, pl):
 		pl.notify(DuelReader, r,
 			no_abort=pl._("Invalid specifier. Retry."),
 			prompt=pl._("Select a card: \n{}".format(dump_game_info(
-				self, pl, **{ '?': {
+				self, pl, **{ 'actions': {
 					'requirement': 'IDLE',
-					# Summonable in attack position
-					'summonable': [card.get_spec(pl) for card in self.summonable],
-					# Summonable in defense position
-					'mset': [card.get_spec(pl) for card in self.idle_mset],
-					# Special summonable
-					'spsummon': [card.get_spec(pl) for card in self.spsummon],
-					# Activatable
-					'activate': [card.get_spec(pl) for card in self.idle_activate],
-					# Re-positionable
-					'repos': [card.get_spec(pl) for card in self.repos],
-					# Settable
-					'set': [card.get_spec(pl) for card in self.idle_set],
-					# To next phase
-					'to_bp': self.to_bp,
-					'to_ep': self.to_ep,
+					'options': _list_idle_actions(self),
+					'targets': _list_available_cards(self, pl),
 				}}
 			))),
 			restore_parser=DuelParser

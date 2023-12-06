@@ -28,15 +28,18 @@ def msg_select_counter(self, data):
 def select_counter(self, player, countertype, count, cards):
 	pl = self.players[player]
 	counter_str = pl.strings['counter'][countertype]
+
 	def prompt():
 		pl.notify(pl._("Type new {counter} for {cards} cards, separated by spaces.")
 			.format(counter=counter_str, cards=len(cards)))
 		for c in cards:
 			pl.notify("%s (%d)" % (c.get_name(pl), c.counter))
 		pl.notify(DuelReader, r, no_abort="Invalid command", restore_parser=DuelParser)
+
 	def error(text):
 		pl.notify(text)
 		return prompt()
+
 	def r(caller):
 		ints = parse_ints(caller.text)
 		ints = [i & 0xffff for i in ints]

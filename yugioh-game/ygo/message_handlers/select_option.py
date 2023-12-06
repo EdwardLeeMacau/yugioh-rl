@@ -56,10 +56,12 @@ def select_option(self, player, options):
 		m.item(opt)(lambda caller, idx=idx: select(caller, idx))
 
 	pl.notify(m)
+	# Inject a JSON string to indicate which actions are valid
 	pl.notify(dump_game_info(
-		self, pl, **{ '?': {
+		self, pl, **{ 'actions': {
 			'requirement': 'SELECT', 'min': 1, 'max': 1,
-			'choices': list(range(1, len(opts) + 1)),
+			'options': list(range(1, len(opts) + 1)),
+			'targets': [],
 		}}
 	))
 

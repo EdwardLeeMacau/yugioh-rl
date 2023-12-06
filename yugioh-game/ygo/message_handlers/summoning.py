@@ -25,7 +25,6 @@ def summoning(self, card, special=False):
 				pl.notify(pl._("%s special summoning %s (%d/%d) in %s position.") % (nick, card.get_name(pl), card.attack, card.defense, pos))
 		else:
 			pl.notify(pl._("%s summoning %s (%d/%d) in %s position.") % (nick, card.get_name(pl), card.attack, card.defense, pos))
-			# self.remain_normal_summon[card.controller] -= 1
 
 def msg_summoning_special(self, *args, **kwargs):
 	kwargs['special'] = True

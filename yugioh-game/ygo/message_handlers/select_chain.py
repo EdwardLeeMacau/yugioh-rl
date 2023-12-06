@@ -67,10 +67,13 @@ def select_chain(self, player, size, spe_count, forced, chains):
 			prompt = pl._("Select card to chain:")
 		else:
 			prompt = pl._("Select card to chain (c = cancel):")
+
+		# Inject a JSON string to indicate which cards are usable
 		prompt += '\n{}'.format(dump_game_info(
-			self, pl, **{ '?': {
-				'requirement': 'SELECT', 'type': 'spec', 'min': 1, 'max': 1,
-				'choices': [card.chain_spec for card in chain_cards] + (['c'] if not forced else []),
+			self, pl, **{ 'actions': {
+				'requirement': 'SELECT', 'min': 1, 'max': 1,
+				'targets': { '': card.chain_spec for card in chain_cards },
+				'options': ['c'] if not forced else [],
 			}}
 		))
 		pl.notify(DuelReader, r, no_abort=pl._("Invalid command."),

@@ -6,7 +6,6 @@ def msg_new_turn(self, data):
 def new_turn(self, tp):
 	self.tp = tp
 	self.players[tp].notify(self.players[tp]._("Your turn."))
-	self.remain_normal_summon = [1, 1]
 	op = self.players[1 - tp]
 	op.notify(op._("%s's turn.") % self.players[tp].nickname)
 	for w in self.watchers:
