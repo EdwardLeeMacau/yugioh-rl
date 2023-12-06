@@ -7,16 +7,12 @@ SinglePlayerEnv: 1 learner vs 1 RandomAgent
  MultiPlayerEnv: 1 learner vs 1 learner
 """
 
-import pysnooper
-
-from datetime import datetime
-from itertools import combinations
 from multiprocessing import Process
 from typing import Dict, List, Tuple
 
 from .game import Action, Game, GameState, Player, Policy
 
-Info = Dict
+GameInfo = Dict
 
 def game_loop(player: Player, policy: Policy) -> None:
     # For now we use threads to demonstrate the game loop for simplicity,
@@ -35,7 +31,7 @@ class SinglePlayerEnv:
     _opponent: Policy
     _process: Process
 
-    _state: Tuple[GameState, float, bool, bool, Info]
+    _state: Tuple[GameState, float, bool, bool, GameInfo]
 
     def __init__(self, opponent: Policy):
         # Game content related resources.
@@ -53,7 +49,7 @@ class SinglePlayerEnv:
         """ List all valid actions given the state. """
         return self.player.list_valid_actions()
 
-    def reset(self, seed=None) -> Tuple[GameState, Info]:
+    def reset(self, seed=None) -> Tuple[GameState, GameInfo]:
         """ Reset the game.
 
         Arguments

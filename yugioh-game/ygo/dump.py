@@ -1,14 +1,28 @@
 import json
-from typing import Callable, Dict, Optional
+from typing import Callable, Dict, List, Optional, Tuple
 
 from ygo.constants import LOCATION
 from ygo.duel import Duel
 from ygo.player import Player
 
+def _dump_card_sequence(
+        duel: Duel, index: int, location: LOCATION, n: int = 0, hiding: bool = True
+    ) -> List[Tuple[int, int]]:
+    """ Dump the cards in the given location into a list of card sequences. """
+    cards = duel.get_cards_in_location(index, location)
+
+    ret = [(None, 0) for _ in range(n)]
+    for card in cards:
+        code = 0 if hiding and card.position & (0x2 | 0x8) else card.code
+        ret[card.sequence] = (code, card.position, )
+
+    return ret
+
 def _dump_state(duel: Duel, player: Player) -> Dict:
     index: int = player.duel_player
     return {
         'phase': duel.current_phase,
+        'remain_normal_summon': duel.remain_normal_summon[index],
         # See: Duel.show_score()
         'score': {
             'player': {
@@ -33,24 +47,12 @@ def _dump_state(duel: Duel, player: Player) -> Dict:
         # See: Duel.show_table()
         'table': {
             'player': {
-                'monster': [
-                    (card.code, card.position, )
-                        for card in duel.get_cards_in_location(index, LOCATION.MZONE)
-                ],
-                'spell': [
-                    (card.code, card.position, )
-                        for card in duel.get_cards_in_location(index, LOCATION.SZONE)
-                ],
+                'monster': _dump_card_sequence(duel, index, LOCATION.MZONE, 5, hiding=False),
+                'spell': _dump_card_sequence(duel, index, LOCATION.SZONE, 5, hiding=False)
             },
             "opponent": {
-                'monster': [
-                    ((0 if card.position & (0x2 | 0x8) else card.code), card.position)
-                        for card in duel.get_cards_in_location(1 - index, LOCATION.MZONE)
-                ],
-                'spell': [
-                    ((0 if card.position & (0x2 | 0x8) else card.code), card.position)
-                        for card in duel.get_cards_in_location(1 - index, LOCATION.SZONE)
-                ],
+                'monster': _dump_card_sequence(duel, 1 - index, LOCATION.MZONE, 5),
+                'spell': _dump_card_sequence(duel, 1 - index, LOCATION.SZONE, 5)
             }
         },
     }

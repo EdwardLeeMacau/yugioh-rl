@@ -148,7 +148,7 @@ class Player:
     # Player's actions
     # --------------------------------------------------------------------------
 
-    def list_valid_actions(self) -> List[Action]:
+    def list_valid_actions(self) -> Tuple[List[Action], List[Action]]:
         """ Decide an action from the valid actions. """
         return self._sm.list_valid_actions()
 

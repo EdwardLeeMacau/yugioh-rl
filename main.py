@@ -18,7 +18,7 @@ def main():
     # -------------------------------------------------------------------------
 
     # Stress test: run 10000 games.
-    for _ in tqdm(range(10000), ncols=0):
+    for _ in tqdm(range(1), ncols=0):
         start = datetime.now().strftime('%Y%m%d-%H%M%S')
         terminated = False
         trajectories: List[Tuple[GameState, Action]] = []

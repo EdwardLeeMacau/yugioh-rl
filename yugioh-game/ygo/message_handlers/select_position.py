@@ -39,8 +39,7 @@ def select_position(self, player, card, positions):
 
 	pl.notify(dump_game_info(
 		self, pl, **{ '?': {
-			'requirement': 'SELECT',
-			'min': 1, 'max': 1,
+			'requirement': 'SELECT', 'min': 1, 'max': 1,
 			'choices': choices,
 		}}
 	))

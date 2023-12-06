@@ -1,6 +1,7 @@
 import io
 
 from ygo.card import Card
+from ygo.constants import LOCATION
 
 def msg_set(self, data):
 	data = io.BytesIO(data[1:])
@@ -15,8 +16,10 @@ def set(self, card):
 	c = card.controller
 	cpl = self.players[c]
 	opl = self.players[1 - c]
-	cpl.notify(cpl._("You set %s (%s) in %s position.") %
-	(card.get_spec(cpl), card.get_name(cpl), card.get_position(cpl)))
+	cpl.notify(cpl._("You set %s (%s) in %s position.") % (card.get_spec(cpl), card.get_name(cpl), card.get_position(cpl)))
+	# Hard code to distinguish between normal and special summon
+	if card.location & LOCATION.MZONE and card.level < 8:
+		self.remain_normal_summon[c] -= 1
 	on = self.players[c].nickname
 	opl.notify(opl._("%s sets %s in %s position.") %
 	(on, card.get_spec(opl), card.get_position(opl)))

@@ -2,17 +2,15 @@ from env.state import StateMachine
 
 def test_idle():
     sm = StateMachine.from_dict({
-        '?': {
-            'activate': ['h4'],
-            'mset': ['h1', 'h2'],
-            'repos': [],
-            'requirement': 'IDLE',
-            'set': ['h3', 'h4', 'h5'],
-            'spsummon': [],
-            'summonable': ['h1', 'h2'],
-            'to_bp': False,
-            'to_ep': True
-        }
+        'activate': ['h4'],
+        'mset': ['h1', 'h2'],
+        'repos': [],
+        'requirement': 'IDLE',
+        'set': ['h3', 'h4', 'h5'],
+        'spsummon': [],
+        'summonable': ['h1', 'h2'],
+        'to_bp': False,
+        'to_ep': True
     })
 
     assert set(sm.list_valid_actions()) == set(['h1', 'h2', 'h3', 'h4', 'h5', 'e'])
@@ -25,13 +23,11 @@ def test_idle():
 
 def test_battle():
     sm = StateMachine.from_dict({
-        '?': {
-            'activatable': [],
-            'attackable': ['m1'],
-            'requirement': 'BATTLE',
-            'to_ep': True,
-            'to_m2': True
-        }
+        'activatable': [],
+        'attackable': ['m1'],
+        'requirement': 'BATTLE',
+        'to_ep': True,
+        'to_m2': True
     })
 
     assert set(sm.list_valid_actions()) == set(['m1', 'm', 'e'])
@@ -44,13 +40,11 @@ def test_battle():
 
 def test_select():
     sm = StateMachine.from_dict({
-        '?': {
-            'choices': ['y', 'n'],
-            'max': 1,
-            'min': 1,
-            'requirement': 'SELECT',
-            'type': 'spec'
-        }
+        'choices': ['y', 'n'],
+        'max': 1,
+        'min': 1,
+        'requirement': 'SELECT',
+        'type': 'spec'
     })
 
     assert set(sm.list_valid_actions()) == set(['y', 'n'])
@@ -59,12 +53,10 @@ def test_select():
 
 def test_select_indices():
     sm = StateMachine.from_dict({
-        '?': {
-            'choices': [18036057, 63749102, 39507162, 97077563, 42829885, 71044499, 5318639],
-            'max': 1,
-            'min': 1,
-            'requirement': 'SELECT'
-        }
+        'choices': [18036057, 63749102, 39507162, 97077563, 42829885, 71044499, 5318639],
+        'max': 1,
+        'min': 1,
+        'requirement': 'SELECT'
     })
 
     assert set(sm.list_valid_actions()) == set(['1', '2', '3', '4', '5', '6', '7'])
@@ -73,12 +65,10 @@ def test_select_indices():
 
 def test_select_indices_batch():
     sm = StateMachine.from_dict({
-        '?': {
-            'choices': [7572887, 63749102, 77585513],
-            'max': 2,
-            'min': 2,
-            'requirement': 'SELECT'
-        }
+        'choices': [7572887, 63749102, 77585513],
+        'max': 2,
+        'min': 2,
+        'requirement': 'SELECT'
     })
 
     assert set(sm.list_valid_actions()) == set(['1', '2', '3'])
@@ -90,13 +80,11 @@ def test_select_indices_batch():
 
 def test_select_indices_for_each():
     sm = StateMachine.from_dict({
-        '?': {
-            'choices': [7572887, 63749102, 77585513],
-            'foreach': 1,
-            'max': 2,
-            'min': 2,
-            'requirement': 'SELECT'
-        }
+        'choices': [7572887, 63749102, 77585513],
+        'foreach': 1,
+        'max': 2,
+        'min': 2,
+        'requirement': 'SELECT'
     })
 
     assert set(sm.list_valid_actions()) == set(['1', '2', '3'])
