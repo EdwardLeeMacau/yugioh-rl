@@ -26,12 +26,6 @@ def announce_attrib(self, player, count, avail):
 		pl.notify("Type %d attributes separated by spaces." % count)
 		for i, attrib in enumerate(avail_attributes_keys):
 			pl.notify("%d. %s" % (i + 1, attrib))
-		# pl.notify(dump_game_info(
-		# 	self, pl, **{ 'actions': {
-		# 		'requirement': 'ANNOUNCE_ATTRIBUTE', 'min': count, 'max': count,
-		# 		'choices': [i for i, _ in enumerate(avail_attributes_keys)],
-		# 	}}
-		# ))
 		pl.notify(DuelReader, r, no_abort="Invalid command", restore_parser=DuelParser)
 	def r(caller):
 		items = caller.text.split()

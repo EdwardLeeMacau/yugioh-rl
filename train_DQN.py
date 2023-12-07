@@ -79,11 +79,11 @@ if __name__ == "__main__":
     model = my_config["algorithm"](
         my_config["policy_network"],
         train_env,
-        learning_rate=0.0007,#0.00007,
-        gamma=0.099,
+        learning_rate=0.0007,# 0.00007,
+        gamma=0.90,
         verbose=0,
         seed=1109,
-        buffer_size=10,
+        buffer_size=1000,
         tensorboard_log=os.path.join("logs", my_config["run_id"]),
         policy_kwargs={
             "features_extractor_class": MultiFeaturesExtractor,
