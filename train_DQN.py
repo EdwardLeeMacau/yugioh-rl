@@ -8,11 +8,11 @@ import torch.nn as nn
 #import wandb
 #from wandb.integration.sb3 import WandbCallback
 
+import stable_baselines3
 from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.vec_env import DummyVecEnv, VecVideoRecorder
 from stable_baselines3 import A2C, DDPG, DQN, PPO, SAC, TD3
 from stable_baselines3.common.torch_layers import BaseFeaturesExtractor
-import stable_baselines3
 
 warnings.filterwarnings("ignore")
 register(
@@ -31,7 +31,7 @@ my_config = {
     "epoch_num": 100,
     "timesteps_per_epoch": 25000,
     "eval_episode_num": 10,
-    
+
     #"normalize_images": False,
 }
 
@@ -68,7 +68,7 @@ def train(env, model, config):
             while not done:
                 action, _state = model.predict(obs, deterministic=True)
                 obs, reward, done, info = env.step(action)
-        
+
         ### Save best model
         if epoch % 10 == 0:
             print("Saving Model")
@@ -76,7 +76,7 @@ def train(env, model, config):
             model.save(f"{save_path}/{epoch}")
         print("---------------")
 
-class MultiFeaturesExtracotr(BaseFeaturesExtractor):
+class MultiFeaturesExtractor(BaseFeaturesExtractor):
     def __init__(self,
                 observation_space: spaces.Dict,
                 feature_dim: int = 256,
@@ -152,43 +152,37 @@ class MultiFeaturesExtracotr(BaseFeaturesExtractor):
             nn.ReLU(),
             nn.Linear(feature_dim//2, feature_dim),
         )
+
     def forward(self, observations) -> th.Tensor:
-        breakpoint()
         single_int_input = th.cat([observations['agent_LP'], observations['oppo_LP']], dim=-1)
         embedded_LP = self.LP_FE(single_int_input)
-        breakpoint()
 
         embedded_agent_hand = self.agent_hand_FE(observations['agent_hand'])
         embedded_agent_grave = self.agent_grave_FE(observations['agent_grave'])
         embedded_agent_removed = self.agent_removed_FE(observations['agent_removed'])
         embedded_oppo_grave = self.oppo_grave_FE(observations['oppo_grave'])
         embedded_oppo_removed = self.oppo_removed_FE(observations['oppo_removed'])
-        breakpoint()
 
         embedded_agent_m = self.post_agent_m_FE(observations['t_agent_m'])
         embedded_oppo_m = self.post_oppo_m_FE(observations['t_oppo_m'])
         embedded_agent_s = self.post_agent_s_FE(observations['t_agent_s'])
         embedded_oppo_s = self.post_oppo_s_FE(observations['t_oppo_s'])
-        breakpoint()
 
         embedded_phase = self.phase_FE(observations['phase'])
         embedded_agent_deck = self.agent_deck_FE(observations['agent_deck'])
         embedded_oppo_deck = self.oppo_deck_FE(observations['oppo_deck'])
         embedded_oppo_hand = self.oppo_hand_FE(observations['oppo_hand'])
-        breakpoint()
-
 
         FE_output = embedded_agent_hand + embedded_agent_grave + embedded_agent_removed + embedded_oppo_grave + embedded_oppo_removed + embedded_agent_m + embedded_agent_s + embedded_oppo_m + embedded_oppo_s + embedded_phase + embedded_agent_deck + embedded_oppo_deck + embedded_oppo_hand
-        breakpoint()
+
         return FE_output
 
 
 if __name__ == "__main__":
-
-    env = DummyVecEnv([make_env])
+    env = DummyVecEnv([make_env for _ in range(1)])
     model = my_config["algorithm"](
-        my_config["policy_network"], 
-        env, 
+        my_config["policy_network"],
+        env,
         learning_rate=0.0007,#0.00007,
         gamma=0.099,
         verbose=0,
@@ -196,7 +190,7 @@ if __name__ == "__main__":
         buffer_size=10,
         #tensorboard_log=my_config["run_id"],
         policy_kwargs={
-            "features_extractor_class":MultiFeaturesExtracotr,
+            "features_extractor_class": MultiFeaturesExtractor,
             "features_extractor_kwargs":{},
         }
     )

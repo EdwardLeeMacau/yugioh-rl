@@ -229,17 +229,19 @@ class YGOEnv(gym.Env):
 
             # --------------------------------- Table information ---------------------------------
 
-            "t_agent_m": spaces.MultiDiscrete([[40, 5] for i in range(5)], dtype=np.int32),
-            "t_oppo_m": spaces.MultiDiscrete([[40, 5] for i in range(5)], dtype=np.int32),
-            "t_agent_s": spaces.MultiDiscrete([[40, 5] for i in range(5)], dtype=np.int32),
-            "t_oppo_s": spaces.MultiDiscrete([[40, 5] for i in range(5)], dtype=np.int32),
+            # [40, 5, 40, 5, 40, 5, 40, 5, 40, 5]
+
+            "t_agent_m": spaces.MultiDiscrete([40, 5, 40, 5, 40, 5, 40, 5, 40, 5], dtype=np.int32),
+            "t_oppo_m": spaces.MultiDiscrete([40, 5, 40, 5, 40, 5, 40, 5, 40, 5], dtype=np.int32),
+            "t_agent_s": spaces.MultiDiscrete([40, 5, 40, 5, 40, 5, 40, 5, 40, 5], dtype=np.int32),
+            "t_oppo_s": spaces.MultiDiscrete([40, 5, 40, 5, 40, 5, 40, 5, 40, 5], dtype=np.int32),
         })
 
         # Set negative reward (penalty) for illegal moves (optional)
         self.set_illegal_move_reward(-0.2)
 
         # Reset ready for a game
-        # self.reset()
+        self.reset()
 
     @property
     def player(self) -> Player:
@@ -290,7 +292,7 @@ class YGOEnv(gym.Env):
 
             # --------------------------------- Games information ---------------------------------
 
-            "phase": np.eye(6)[self.PHASE2DIGITS[game_state['phase']]],
+            "phase": self.PHASE2DIGITS[game_state['phase']],
 
             # -------------------------------- Players information --------------------------------
 
@@ -314,10 +316,10 @@ class YGOEnv(gym.Env):
 
             # --------------------------------- Table information ---------------------------------
 
-            "t_agent_m": self._IDStateList_to_vector(player['monster']),
-            "t_agent_s": self._IDStateList_to_vector(player['spell']),
-            "t_oppo_m": self._IDStateList_to_vector(opponent['monster']),
-            "t_oppo_s": self._IDStateList_to_vector(opponent['spell']),
+            "t_agent_m": self._IDStateList_to_vector(player['monster']).flatten(),
+            "t_agent_s": self._IDStateList_to_vector(player['spell']).flatten(),
+            "t_oppo_m": self._IDStateList_to_vector(opponent['monster']).flatten(),
+            "t_oppo_s": self._IDStateList_to_vector(opponent['spell']).flatten(),
         }
 
     @classmethod
