@@ -19,7 +19,11 @@ def msg_select_position(self, data):
 
 def select_position(self, player, card, positions):
 	pl = self.players[player]
-	m = DuelMenu(pl._("Select position for %s:") % (card.get_name(pl),), no_abort="Invalid option.", persistent=True, restore_parser=DuelParser)
+	m = DuelMenu(
+		pl._("Select position for %s:") % (card.get_name(pl),),
+		no_abort="Invalid option.", persistent=True,
+		restore_parser=DuelParser
+	)
 	def set(caller, pos=None):
 		self.set_responsei(pos)
 		reactor.callLater(0, process_duel, self)
@@ -27,22 +31,22 @@ def select_position(self, player, card, positions):
 	choices = []
 	if positions & POSITION.FACEUP_ATTACK:
 		m.item(pl._("Face-up attack"))(lambda caller: set(caller, 1))
-		choices.append(POSITION.FACEUP_ATTACK)
+		choices.append(len(choices) + 1)
 	if positions & POSITION.FACEDOWN_ATTACK:
 		m.item(pl._("Face-down attack"))(lambda caller: set(caller, 2))
-		choices.append(POSITION.FACEDOWN_ATTACK)
+		choices.append(len(choices) + 1)
 	if positions & POSITION.FACEUP_DEFENSE:
 		m.item(pl._("Face-up defense"))(lambda caller: set(caller, 4))
-		choices.append(POSITION.FACEUP_DEFENSE)
+		choices.append(len(choices) + 1)
 	if positions & POSITION.FACEDOWN_DEFENSE:
 		m.item(pl._("Face-down defense"))(lambda caller: set(caller, 8))
-		choices.append(POSITION.FACEDOWN_DEFENSE)
+		choices.append(len(choices) + 1)
 
 	pl.notify(dump_game_info(
 		self, pl, **{ 'actions': {
 			'requirement': 'SELECT', 'min': 1, 'max': 1,
 			'targets': [],
-			'options': list(map(str, choices)),
+			'options': list(map(lambda x: str(int(x)), choices)),
 		}}
 	))
 	pl.notify(m)

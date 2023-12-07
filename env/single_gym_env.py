@@ -93,6 +93,7 @@ class YGOEnv(gym.Env):
     #
     # TODO: Accelerate index queries with hash map
     _DECK_LIST = [
+        None,       # empty space
         72989439,
         77585513,
         18036057,
@@ -130,16 +131,18 @@ class YGOEnv(gym.Env):
         73915051,
         44095762,
         31560081,
-        0,
-        None,
-        "token"
+        73915052,   # Scapegoat (should map to the same encoding)
+        73915053,   # Scapegoat
+        73915054,   # Scapegoat
+        73915055,   # Scapegoat
+        0,          # hidden card
     ]
 
     # Enumerate actions
     _ACTIONS = [
         # *_DECK_LIST,
         *_DECK_LIST,
-        *_RACES, # Announce races
+        *_RACES,    # Announce races
         "e", # enter end phase
         "z", # back
         "s", # summon this card in face-up attack position
@@ -154,6 +157,8 @@ class YGOEnv(gym.Env):
         "r", # reposition
         '1', # select option of Don Zaloog
         '2',
+        '3', # FACEUP.DEFENSE
+        '4',
     ]
 
     # action (string | CardID) -> action (int)

@@ -22,6 +22,14 @@ class StateMachine:
         ----------
         spec : bool
             If True, return card specs instead of codes. Default: False.
+
+        Returns
+        -------
+        options : List[Action]
+            List of valid actions.
+
+        targets : List[Dict[Action, str]]
+            List of valid targets in pair (code, spec).
         """
         match self._current.get('requirement', None):
             case 'BATTLE' | 'IDLE':
@@ -36,29 +44,19 @@ class StateMachine:
                 return ([], target, )
 
             case 'EFFECT':
-                breakpoint()
                 options.append(self._current['effect'])
 
-            case 'SELECT' | 'TRIBUTE' | 'YESNO' | "ANNOUNCE_RACE":
+            case 'SELECT' | 'TRIBUTE' | 'ANNOUNCE_RACE':
                 # 'type': spec
                 #
                 # Return card specs to select, assume `n` is 1
                 # >>> ['h3', 'h4', 's5', ... ]
                 options = self._current['options']
                 targets = {
-                    card[1] : card[0] for card in self._current['targets']
+                    card[1] : card[0] for card in self._current['targets'] if card[0] not in self._queue
                 }
+
                 return (options, targets)
-
-                # 'type': indices
-                #
-                # Return indices of cards to select
-                # >>> ['1', '2', ... ]
-                options  = set(map(str, range(1, len(self._current['options']) + 1)))
-                options -= set(self._queue)
-                options  = list(options)
-
-                return (options, {})
 
             case _:
                 raise ValueError(f"Unknown requirement: {self._current.get('requirement', None)}")
@@ -103,7 +101,7 @@ class StateMachine:
                 self._current['requirement'] = 'IDLE_ACTION'
                 return False
 
-            case 'SELECT' | 'TRIBUTE' | 'YESNO' | "ANNOUNCE_RACE":
+            case 'SELECT' | 'TRIBUTE' | 'ANNOUNCE_RACE':
                 self._queue.append(action)
                 return len(self._queue) >= self._current.get('foreach', self._current['min'])
 

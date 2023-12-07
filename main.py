@@ -15,6 +15,8 @@ def main():
     env.reset()
     n = 0
     pbar = tqdm(total = 1001)
+    # player = env.player
+    # policy = env._opponent
     while True:
         action = env.action_space.sample(mask=env.action_mask)
         obs, reward, done, _, info = env.step(action)
