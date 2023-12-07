@@ -28,13 +28,13 @@ register(
 # TODO: Double check the impl. to ensure the action mask works during
 #       both training and inference time.
 class MaskedQNetwork(QNetwork):
-    def _predict(self, observation: PyTorchObs, deterministic: bool = True) -> th.Tensor:
-        mask = observation['action_mask'].clone().to(th.bool)
-        q_values = self(observation)
+    def forward(self, obs: PyTorchObs) -> th.Tensor:
+        mask = obs['action_mask'].clone().to(th.bool)
+
+        q_values = super().forward(obs)
         q_values[~mask] = -th.inf
-        # Greedy action
-        action = q_values.argmax(dim=1).reshape(-1)
-        return action
+
+        return q_values
 
 class MaskedPolicy(MultiInputPolicy):
     def make_q_net(self) -> QNetwork:
@@ -78,17 +78,17 @@ def train(env: YGOEnv, model, config):
         print("Epoch: ", epoch)
         avg_score = 0
         avg_highest = 0
-        for seed in range(config["eval_episode_num"]):
-            done = False
+        # for seed in range(config["eval_episode_num"]):
+        #     done = False
 
-            # Set seed using old Gym API
-            env.seed(seed)
-            obs = env.reset()
+        #     # Set seed using old Gym API
+        #     env.seed(seed)
+        #     obs = env.reset()
 
-            # Interact with env using old Gym API
-            while not done:
-                action, _state = model.predict(obs, deterministic=True)
-                obs, reward, done, info = env.step(action)
+        #     # Interact with env using old Gym API
+        #     while not done:
+        #         action, _state = model.predict(obs, deterministic=False)
+        #         obs, reward, done, info = env.step(action)
 
         ### Save best model
         # model.save() encounters error because the environment utilizes threading.
@@ -99,7 +99,7 @@ def train(env: YGOEnv, model, config):
         print("---------------")
 
 if __name__ == "__main__":
-    train_env = DummyVecEnv([make_env for _ in range(32)])
+    train_env = DummyVecEnv([make_env for _ in range(1)])
     env = DummyVecEnv([make_env])
     model = my_config["algorithm"](
         my_config["policy_network"],

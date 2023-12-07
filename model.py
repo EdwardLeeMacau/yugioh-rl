@@ -37,11 +37,11 @@ class MultiFeaturesExtractor(BaseFeaturesExtractor):
                                     feature_dim, feature_dim // 2)
         self.phase_FE         = MLP(observation_space['phase'].n,
                                     feature_dim, feature_dim // 2)
-        self.agent_deck_FE    = MLP(observation_space['agent_deck'].n,
+        self.agent_deck_FE    = MLP(observation_space['agent_deck'].shape[0],
                                     feature_dim, feature_dim // 2)
-        self.oppo_deck_FE     = MLP(observation_space['oppo_deck'].n,
+        self.oppo_deck_FE     = MLP(observation_space['oppo_deck'].shape[0],
                                     feature_dim, feature_dim // 2)
-        self.oppo_hand_FE     = MLP(observation_space['oppo_hand'].n,
+        self.oppo_hand_FE     = MLP(observation_space['oppo_hand'].shape[0],
                                     feature_dim, feature_dim // 2)
         self.agent_hand_FE    = MLP(observation_space['agent_hand'].shape[0],
                                     feature_dim, feature_dim // 2)
@@ -76,11 +76,11 @@ class MultiFeaturesExtractor(BaseFeaturesExtractor):
         embedded_agent_s = self.post_agent_s_FE(observations['t_agent_s'])
         embedded_oppo_s = self.post_oppo_s_FE(observations['t_oppo_s'])
 
-        embedded_phase = self.phase_FE(observations['phase'])
+        # embedded_phase = self.phase_FE(observations['phase'])
         embedded_agent_deck = self.agent_deck_FE(observations['agent_deck'])
         embedded_oppo_deck = self.oppo_deck_FE(observations['oppo_deck'])
         embedded_oppo_hand = self.oppo_hand_FE(observations['oppo_hand'])
 
-        FE_output = embedded_agent_hand + embedded_agent_grave + embedded_agent_removed + embedded_oppo_grave + embedded_oppo_removed + embedded_agent_m + embedded_agent_s + embedded_oppo_m + embedded_oppo_s + embedded_phase + embedded_agent_deck + embedded_oppo_deck + embedded_oppo_hand
+        FE_output = embedded_agent_hand + embedded_agent_grave + embedded_agent_removed + embedded_oppo_grave + embedded_oppo_removed + embedded_agent_m + embedded_agent_s + embedded_oppo_m + embedded_oppo_s + embedded_agent_deck + embedded_oppo_deck + embedded_oppo_hand
 
         return FE_output

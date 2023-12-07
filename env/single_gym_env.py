@@ -201,17 +201,18 @@ class YGOEnv(gym.Env):
         self.action_space = spaces.Discrete(len(self.ACTION2DIGITS.keys()), start=0)
         # trap card have not been implemented.
         self.observation_space = spaces.Dict({
+
             # Current game phase (affect the valid actions)
-            "phase": spaces.Discrete(6, start=1),
+            "phase": spaces.Discrete(6),
 
             # -------------------------------- Players information --------------------------------
 
             # Player's life points (normalized to [0, 1])
-            "agent_LP": spaces.Box(low=0., high=1., shape=(1, ), dtype=np.float32),
+            "agent_LP": spaces.Box(low=-1., high=1., shape=(1, ), dtype=np.float32),
             # Player's hand (multi-hot encoding, number of cards in hand <= 3)
             "agent_hand": spaces.Box(low=0., high=3., shape=(40, ), dtype=np.float32),
             # Player's deck (number of cards in deck), can infer the remaining cards in deck
-            "agent_deck": spaces.Discrete(41, start=0),
+            "agent_deck": spaces.Box(low=0, high=40, shape=(1, ), dtype=np.float32),
             # Player's grave (multi-hot encoding)
             "agent_grave": spaces.Box(low=0., high=4., shape=(40, ), dtype=np.float32),
             # Player's banished cards (multi-hot encoding)
@@ -221,9 +222,9 @@ class YGOEnv(gym.Env):
 
             # ------------------------------- Opponents information -------------------------------
 
-            "oppo_LP": spaces.Box(low=0., high=1., shape=(1, ), dtype=np.float32),
-            "oppo_hand": spaces.Discrete(7, start=0),
-            "oppo_deck": spaces.Discrete(41, start=0),
+            "oppo_LP": spaces.Box(low=-1, high=1., shape=(1, ), dtype=np.float32),
+            "oppo_hand": spaces.Box(low=0., high=40., shape=(1, ), dtype=np.float32),
+            "oppo_deck": spaces.Box(low=0, high=40, shape=(1, ), dtype=np.float32),
             "oppo_grave": spaces.Box(low=0., high=4., shape=(40, ), dtype=np.float32),
             "oppo_removed": spaces.Box(low=0., high=4., shape=(40, ), dtype=np.float32),
 
@@ -238,7 +239,7 @@ class YGOEnv(gym.Env):
         # Set negative reward (penalty) for illegal moves (optional)
         self.set_illegal_move_reward(-0.2)
 
-        # Reset ready for a game
+        # Ready for a game
         self.reset()
 
     @property
@@ -359,7 +360,7 @@ class YGOEnv(gym.Env):
             terminated, next_state_dict = self.player.step(action)
             if terminated:
                 reward = next_state_dict.get('score', 0.0)
-                self.reset()
+                # self.reset()
             else:
                 self._encode_state(next_state_dict, self.player.list_valid_actions())
 
