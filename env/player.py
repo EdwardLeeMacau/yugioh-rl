@@ -35,8 +35,8 @@ class Player:
         account = accounts.allocate()
 
         # create a log file
-        os.makedirs('logs', exist_ok=True)
-        self._log = open(f'logs/{account.username}.log', 'wb')
+        # os.makedirs('logs', exist_ok=True)
+        # self._log = open(f'logs/{account.username}.log', 'wb')
 
         # member fields
         self._host = account.host
@@ -51,16 +51,16 @@ class Player:
         self._server.write(msg)
 
         # Debugging usage: print the message to the log file
-        self._log.write(msg)
-        self._log.flush()
+        # self._log.write(msg)
+        # self._log.flush()
         return None
 
     def _read_until(self, expected: bytes) -> bytes:
         msg = self._server.read_until(expected)
 
         # Debugging usage: print the message to the log file
-        self._log.write(msg)
-        self._log.flush()
+        # self._log.write(msg)
+        # self._log.flush()
 
         return msg
 
@@ -78,8 +78,8 @@ class Player:
         if bool(self._server.sock) == True:
             self._server.close()
 
-        if not self._log.closed:
-            self._log.close()
+        # if not self._log.closed:
+        #     self._log.close()
 
         accounts.free(Account(
             host=self._host, port=self._port,
@@ -176,8 +176,8 @@ class Player:
         # Remove the separator and parse the JSON string
         embed = json.loads(embed[:-1])
 
-        self._log.write(bytes(pformat(embed), 'utf-8'))
-        self._log.flush()
+        # self._log.write(bytes(pformat(embed), 'utf-8'))
+        # self._log.flush()
 
         return embed
 

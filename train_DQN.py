@@ -6,9 +6,13 @@ from gymnasium.envs.registration import register
 #import wandb
 #from wandb.integration.sb3 import WandbCallback
 
+import torch as th
+import pysnooper
 from stable_baselines3.common.monitor import Monitor
+from stable_baselines3.common.type_aliases import PyTorchObs
 from stable_baselines3.common.vec_env import DummyVecEnv, VecVideoRecorder
 from stable_baselines3 import A2C, DDPG, DQN, PPO, SAC, TD3
+from stable_baselines3.dqn.policies import MultiInputPolicy, QNetwork
 
 from model import MultiFeaturesExtractor
 from env.single_gym_env import YGOEnv
@@ -19,17 +23,36 @@ register(
     entry_point="env.single_gym_env:YGOEnv"
 )
 
+# Inherit from QNetwork to implement a masked DQN
+
+# TODO: Double check the impl. to ensure the action mask works during
+#       both training and inference time.
+class MaskedQNetwork(QNetwork):
+    def _predict(self, observation: PyTorchObs, deterministic: bool = True) -> th.Tensor:
+        mask = observation['action_mask'].clone().to(th.bool)
+        q_values = self(observation)
+        q_values[~mask] = -th.inf
+        # Greedy action
+        action = q_values.argmax(dim=1).reshape(-1)
+        return action
+
+class MaskedPolicy(MultiInputPolicy):
+    def make_q_net(self) -> QNetwork:
+        net_args = self._update_features_extractor(self.net_args, features_extractor=None)
+        return MaskedQNetwork(**net_args).to(self.device)
+
+
 # Set hyper params (configurations) for training
 my_config = {
     "run_id": "example",
 
     "algorithm": DQN,
-    "policy_network": "MultiInputPolicy",
+    "policy_network": MaskedPolicy,
     "save_path": "models/sample_model",
 
     "epoch_num": 100,
     "timesteps_per_epoch": 25000,
-    "eval_episode_num": 10,
+    "eval_episode_num": 1,
 
     #"normalize_images": False,
 }
@@ -47,6 +70,7 @@ def train(env: YGOEnv, model, config):
         model.learn(
             total_timesteps=config["timesteps_per_epoch"],
             reset_num_timesteps=False,
+            log_interval=1,
         )
 
         ### Evaluation
@@ -67,14 +91,15 @@ def train(env: YGOEnv, model, config):
                 obs, reward, done, info = env.step(action)
 
         ### Save best model
+        # model.save() encounters error because the environment utilizes threading.
         if epoch % 10 == 0:
             print("Saving Model")
             save_path = config["save_path"]
-            model.save(f"{save_path}/{epoch}")
+            # model.save(f"{save_path}/{epoch}")
         print("---------------")
 
 if __name__ == "__main__":
-    train_env = DummyVecEnv([make_env for _ in range(16)])
+    train_env = DummyVecEnv([make_env for _ in range(32)])
     env = DummyVecEnv([make_env])
     model = my_config["algorithm"](
         my_config["policy_network"],

@@ -3,3 +3,7 @@ __pycache__
 
 # Auto-generated log files for debugging usage.
 logs
+runs
+
+# Checkpoint files for model training.
+models

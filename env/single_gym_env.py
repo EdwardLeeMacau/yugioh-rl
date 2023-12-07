@@ -229,10 +229,10 @@ class YGOEnv(gym.Env):
 
             # --------------------------------- Table information ---------------------------------
 
-            "t_agent_m": spaces.MultiDiscrete([40, 5, 40, 5, 40, 5, 40, 5, 40, 5], dtype=np.int32),
-            "t_oppo_m": spaces.MultiDiscrete([40, 5, 40, 5, 40, 5, 40, 5, 40, 5], dtype=np.int32),
-            "t_agent_s": spaces.MultiDiscrete([40, 5, 40, 5, 40, 5, 40, 5, 40, 5], dtype=np.int32),
-            "t_oppo_s": spaces.MultiDiscrete([40, 5, 40, 5, 40, 5, 40, 5, 40, 5], dtype=np.int32),
+            "t_agent_m": spaces.MultiBinary(225),
+            "t_oppo_m": spaces.MultiBinary(225),
+            "t_agent_s": spaces.MultiBinary(225),
+            "t_oppo_s": spaces.MultiBinary(225),
         })
 
         # Set negative reward (penalty) for illegal moves (optional)
@@ -296,19 +296,19 @@ class YGOEnv(gym.Env):
 
             "agent_LP": np.array([player['lp']]) / 8000.,
             "agent_hand": self._IDList_to_MultiHot(player['hand']),
-            "agent_deck": np.array([player['deck']]) / 40,
+            "agent_deck": np.array([player['deck']]) / 40.,
             "agent_grave": self._IDList_to_MultiHot(player['grave']),
             "agent_removed": self._IDList_to_MultiHot(player['removed']),
 
             # ------------------------------ Valid action information -----------------------------
 
-            "action_mask": self._action_mask,
+            "action_mask": self._action_mask.astype(np.float32),
 
             # ------------------------------- Opponents information -------------------------------
 
             "oppo_LP": np.array([opponent['lp']]) / 8000.,
-            "oppo_hand": np.array([opponent['hand']]) / 40,
-            "oppo_deck": np.array([opponent['deck']]) / 40,
+            "oppo_hand": np.array([opponent['hand']]) / 40.,
+            "oppo_deck": np.array([opponent['deck']]) / 40.,
             "oppo_grave": self._IDList_to_MultiHot(opponent['grave']),
             "oppo_removed": self._IDList_to_MultiHot(opponent['removed']),
 
@@ -324,19 +324,14 @@ class YGOEnv(gym.Env):
     def _IDStateList_to_vector(cls, id_state_list: List[Tuple[int, int]]) -> np.ndarray:
         assert len(id_state_list) == 5, "The card list is padded to 5 with empty card (None)"
 
-        frame_array = np.zeros(shape=(5, 2))
-        frame_array[:, 0] = cls._DECK_LIST.index(None)
-        frame_array[:, 1] = 4
+        frame_array = np.zeros(shape=(5, 45), dtype=np.float32)
+        # frame_array[:, 0] = cls._DECK_LIST.index(None)
+        # frame_array[:, 1] = 4
 
+        # One-hot encoding for the card ID.
         for i in range(len(id_state_list)):
-            try:
-                frame_array[i, 0] = cls._DECK_LIST.index(id_state_list[i][0])
-            except:
-                # Assign all unknown cards to the same encoding
-                # Design for Scapegoat
-                frame_array[i, 0] = cls._DECK_LIST.index("token")
-
-            frame_array[i, 1] = id_state_list[i][1]
+            frame_array[i, cls._DECK_LIST.index(id_state_list[i][0])] = 1
+            # frame_array[i, 1] = id_state_list[i][1]
 
         return frame_array
 

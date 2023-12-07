@@ -53,18 +53,17 @@ class MultiFeaturesExtractor(BaseFeaturesExtractor):
                                     feature_dim, feature_dim // 2)
         self.oppo_removed_FE  = MLP(observation_space['oppo_removed'].shape[0],
                                     feature_dim, feature_dim // 2)
-        self.post_agent_m_FE  = MLP(observation_space['t_agent_m'].nvec.sum(),
+        self.post_agent_m_FE  = MLP(observation_space['t_agent_m'].n,
                                     feature_dim, feature_dim // 2)
-        self.post_oppo_m_FE   = MLP(observation_space['t_oppo_m'].nvec.sum(),
+        self.post_oppo_m_FE   = MLP(observation_space['t_oppo_m'].n,
                                     feature_dim, feature_dim // 2)
-        self.post_agent_s_FE  = MLP(observation_space['t_agent_m'].nvec.sum(),
+        self.post_agent_s_FE  = MLP(observation_space['t_agent_m'].n,
                                     feature_dim, feature_dim // 2)
-        self.post_oppo_s_FE   = MLP(observation_space['t_agent_m'].nvec.sum(),
+        self.post_oppo_s_FE   = MLP(observation_space['t_agent_m'].n,
                                     feature_dim, feature_dim // 2)
 
     def forward(self, observations) -> Tensor:
         single_int_input = torch.cat([observations['agent_LP'], observations['oppo_LP']], dim=-1)
-        embedded_LP = self.LP_FE(single_int_input)
 
         embedded_agent_hand = self.agent_hand_FE(observations['agent_hand'])
         embedded_agent_grave = self.agent_grave_FE(observations['agent_grave'])
