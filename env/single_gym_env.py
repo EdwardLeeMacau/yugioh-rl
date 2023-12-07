@@ -229,8 +229,6 @@ class YGOEnv(gym.Env):
 
             # --------------------------------- Table information ---------------------------------
 
-            # [40, 5, 40, 5, 40, 5, 40, 5, 40, 5]
-
             "t_agent_m": spaces.MultiDiscrete([40, 5, 40, 5, 40, 5, 40, 5, 40, 5], dtype=np.int32),
             "t_oppo_m": spaces.MultiDiscrete([40, 5, 40, 5, 40, 5, 40, 5, 40, 5], dtype=np.int32),
             "t_agent_s": spaces.MultiDiscrete([40, 5, 40, 5, 40, 5, 40, 5, 40, 5], dtype=np.int32),
