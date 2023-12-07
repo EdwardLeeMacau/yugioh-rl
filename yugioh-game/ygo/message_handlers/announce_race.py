@@ -46,6 +46,7 @@ def announce_race(self, player, count, avail: int):
 			self, pl, **{ 'actions': {
 				'requirement': 'ANNOUNCE_RACE', 'min': count, 'max': count,
 				'options': [k for _, k in enumerate(avail_races_keys)],
+				'targets': [],
 			}}
 		))
 		pl.notify(DuelReader, r, no_abort="Invalid entry.", restore_parser=DuelParser)

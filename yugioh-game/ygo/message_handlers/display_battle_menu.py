@@ -32,10 +32,19 @@ def display_battle_menu(self, pl):
 			pl.notify(pl._("Invalid option."))
 			return self.display_battle_menu(pl)
 
+	options = []
+	if self.attackable:
+		options.append('a')
+	if self.activatable:
+		options.append('c')
+	if self.to_m2:
+		options.append('m')
+	if self.to_ep:
+		options.append('e')
 	pl.notify(dump_game_info(
 		self, pl, **{ 'actions': {
 			'requirement': 'BATTLE',
-			'options': ['a', 'c', 'e', 'm'],
+			'options': options,
 			'targets': {
 				'a': [(card.get_spec(pl), card.code) for card in self.attackable],
 				'c': [(card.get_spec(pl), card.code) for card in self.activatable],

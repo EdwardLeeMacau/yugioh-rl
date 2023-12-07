@@ -34,9 +34,8 @@ def yesno(self, player, desc):
 
 	pl.notify(dump_game_info(
 		self, pl, **{ 'actions': {
-			'requirement': 'YESNO', 'type': 'spec', 'min': 1, 'max': 1,
-			'question': opt,
-			'options': ['y', 'n'],
+			'requirement': 'SELECT', 'min': 1, 'max': 1,
+			'options': ['y', 'n'], 'targets': [],
 		}}
 	))
 	pl.notify(yes_or_no_parser, opt, yes, no=no, restore_parser=old_parser)

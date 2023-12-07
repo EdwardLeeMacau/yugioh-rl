@@ -31,7 +31,7 @@ def select_effectyn(self, player, card, desc):
 	question = pl._("Do you want to use the effect from {card} in {spec}?").format(card=card.get_name(pl), spec=spec)
 	question += dump_game_info(
 		self, pl, **{ 'actions': {
-			'requirement': 'SELECT', 'type': 'options', 'min': 1, 'max': 1,
+			'requirement': 'SELECT', 'min': 1, 'max': 1,
 			'options': ['y', 'n'], 'targets': [],
 		}}
 	)

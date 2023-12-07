@@ -5,7 +5,7 @@ from tqdm import tqdm
 
 from env.single_gym_env import YGOEnv
 
-if __name__ =="__main__":
+def main():
     register(
         id="single_ygo",
         entry_point="env.single_gym_env:YGOEnv"
@@ -24,3 +24,6 @@ if __name__ =="__main__":
             breakpoint()
 
     env.finalize()
+
+if __name__ == "__main__":
+    main()

@@ -53,6 +53,7 @@ def select_chain(self, player, size, spe_count, forced, chains):
 		specs[cs] = card
 		card.chain_spec = cs
 		card.effect_description = card.get_effect_description(pl, desc, True)
+
 	def prompt():
 		if forced:
 			pl.notify(pl._("Select chain:"))
@@ -72,12 +73,13 @@ def select_chain(self, player, size, spe_count, forced, chains):
 		prompt += '\n{}'.format(dump_game_info(
 			self, pl, **{ 'actions': {
 				'requirement': 'SELECT', 'min': 1, 'max': 1,
-				'targets': { '': card.chain_spec for card in chain_cards },
+				'targets': [(card.chain_spec, card.code) for card in chain_cards],
 				'options': ['c'] if not forced else [],
 			}}
 		))
 		pl.notify(DuelReader, r, no_abort=pl._("Invalid command."),
 		prompt=prompt, restore_parser=DuelParser)
+
 	def r(caller):
 		if caller.text == 'c' and not forced:
 			self.set_responsei(-1)

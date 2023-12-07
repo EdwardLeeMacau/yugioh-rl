@@ -23,6 +23,7 @@ def select_position(self, player, card, positions):
 	def set(caller, pos=None):
 		self.set_responsei(pos)
 		reactor.callLater(0, process_duel, self)
+
 	choices = []
 	if positions & POSITION.FACEUP_ATTACK:
 		m.item(pl._("Face-up attack"))(lambda caller: set(caller, 1))
@@ -40,7 +41,8 @@ def select_position(self, player, card, positions):
 	pl.notify(dump_game_info(
 		self, pl, **{ 'actions': {
 			'requirement': 'SELECT', 'min': 1, 'max': 1,
-			'options': choices,
+			'targets': [],
+			'options': list(map(str, choices)),
 		}}
 	))
 	pl.notify(m)

@@ -37,30 +37,33 @@ class StateMachine:
 
             case 'EFFECT':
                 breakpoint()
-                actions.append(self._current['effect'])
+                options.append(self._current['effect'])
 
             case 'SELECT' | 'TRIBUTE' | 'YESNO' | "ANNOUNCE_RACE":
-                breakpoint()
-                match self._current.get('type', 'indices'):
-                    case 'spec':
-                        # 'type': spec
-                        #
-                        # Return card specs to select, assume `n` is 1
-                        # >>> ['h3', 'h4', 's5', ... ]
-                        cards = self._current['choices']
-                    case 'indices':
-                        # 'type': indices
-                        #
-                        # Return indices of cards to select
-                        # >>> ['1', '2', ... ]
-                        actions  = set(map(str, range(1, len(self._current['choices']) + 1)))
-                        actions -= set(self._queue)
-                        actions  = list(actions)
+                # 'type': spec
+                #
+                # Return card specs to select, assume `n` is 1
+                # >>> ['h3', 'h4', 's5', ... ]
+                options = self._current['options']
+                targets = {
+                    card[1] : card[0] for card in self._current['targets']
+                }
+                return (options, targets)
+
+                # 'type': indices
+                #
+                # Return indices of cards to select
+                # >>> ['1', '2', ... ]
+                options  = set(map(str, range(1, len(self._current['options']) + 1)))
+                options -= set(self._queue)
+                options  = list(options)
+
+                return (options, {})
 
             case _:
                 raise ValueError(f"Unknown requirement: {self._current.get('requirement', None)}")
 
-        return (actions, cards)
+        return (options, targets)
 
     def to_string(self) -> str:
         if self._current.get('requirement', None) in ('SELECT', 'TRIBUTE'):
@@ -79,7 +82,11 @@ class StateMachine:
                 self._current['requirement'] = 'BATTLE_ACTION'
                 return False
 
-            case 'BATTLE_ACTION' | 'IDLE_ACTION':
+            case 'BATTLE_ACTION':
+                self._queue.append(action)
+                return True
+
+            case 'IDLE_ACTION':
                 self._queue.insert(0, action)
                 return True
 

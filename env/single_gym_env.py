@@ -45,8 +45,8 @@ def game_loop(player: Player, policy: Policy) -> None:
     terminated, state = player.decode(player.wait())
 
     while not terminated:
-        actions = player.list_valid_actions()
-        action = policy.react(state, actions)
+        options, targets = player.list_valid_actions()
+        action = policy.react(None, options + list(targets.values()))
         terminated, state = player.step(action)
 
     return

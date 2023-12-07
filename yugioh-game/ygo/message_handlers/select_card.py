@@ -65,7 +65,7 @@ def select_card(self, player, cancelable, min_cards, max_cards, cards: List[Card
 			self, pl, **{ 'actions': {
 				'requirement': 'TRIBUTE' if is_tribute else 'SELECT',
 				'min': min_cards, 'max': max_cards, 'type': 'spec',
-				'options': [], 'targets': [(k, v.code) for k, v in pl.card_list.keys()],
+				'options': [], 'targets': [(k, v.code) for k, v in pl.card_list.items()],
 			}}
 		))
 		for i, c in enumerate(_cards.values()):
