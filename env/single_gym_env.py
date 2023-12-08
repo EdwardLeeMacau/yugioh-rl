@@ -241,8 +241,9 @@ class YGOEnv(gym.Env):
         # Set negative reward (penalty) for illegal moves (optional)
         self.set_illegal_move_reward(-0.2)
 
-        # Ready for a game
-        self.reset()
+        # ! DO NOT call reset() here.
+        #   Otherwise the connection will NOT be closed and lead to infinite waiting.
+        # self.reset()
 
     @property
     def player(self) -> Player:

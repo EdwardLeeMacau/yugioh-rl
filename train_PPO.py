@@ -26,6 +26,8 @@ my_config = {
 
     "epoch_num": 1,
     "timesteps_per_epoch": 100000,
+    "n_steps": 128,
+    "parallel": 32,
     "eval_episode_num": 1,
 }
 
@@ -76,13 +78,14 @@ def train(env: YGOEnv, model, config):
 
 
 if __name__ == "__main__":
-    train_env = DummyVecEnv([make_env for _ in range(32)])
+    train_env = DummyVecEnv([make_env for _ in range(my_config["parallel"])])
     env = DummyVecEnv([make_env])
     model = MaskablePPO(
         my_config["policy_network"],
         train_env,
         learning_rate=0.0003,
         gamma=0.90,
+        n_steps=my_config["n_steps"],
         tensorboard_log=os.path.join("logs", my_config["run_id"]),
         policy_kwargs={
             "features_extractor_class": MultiFeaturesExtractor,
