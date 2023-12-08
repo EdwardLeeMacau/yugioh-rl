@@ -24,8 +24,8 @@ my_config = {
     "policy_network": "MultiInputPolicy",
     "save_path": "models/sample_model",
 
-    "epoch_num": 1,
-    "timesteps_per_epoch": 100000,
+    "epoch_num": 100,
+    "timesteps_per_epoch": 102400,
     "n_steps": 128,
     "parallel": 32,
     "eval_episode_num": 1,

@@ -187,7 +187,6 @@ class YGOEnv(gym.Env):
     _spec_map: Dict[str, int]
     _spec_unmap: Dict[int, str]
     _state: Tuple[Dict[str, Tensor], GameInfo]
-    _step: int
 
     def __init__(self, opponent: Policy = RandomPolicy()):
         super(YGOEnv, self).__init__()
@@ -197,7 +196,6 @@ class YGOEnv(gym.Env):
         self._process = None
 
         self._state = None
-        self._step = 0
 
         # define the action space and the observation space
         self.action_space = spaces.Discrete(len(self.ACTION2DIGITS.keys()), start=0)
@@ -402,15 +400,14 @@ class YGOEnv(gym.Env):
         if self._process is not None:
             self._process.terminate()
 
-        if self._game is not None:
-            self._game.close()
+        if self._game is None:
+            self._game = Game()
 
         # Re-create the game instance.
         # Launch a new thread for the opponent's decision making.
-        self._game = Game().start()
+        self._game.start()
         self._process = Process(target=game_loop, args=(self._game._player2, self._opponent))
         self._process.start()
-        self._step = 0
 
         # Wait until server acknowledges the player to make a decision.
         _, state = self.player.decode(self.player.wait())
