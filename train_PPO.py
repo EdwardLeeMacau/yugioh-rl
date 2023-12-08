@@ -35,7 +35,7 @@ def make_env():
     env = gym.make('single_ygo')
     return env
 
-def train(env: YGOEnv, model, config):
+def train(model, config):
     current_best_ = 0
     current_best = 0
 
@@ -46,6 +46,9 @@ def train(env: YGOEnv, model, config):
             reset_num_timesteps=False,
             log_interval=1,
         )
+
+        # Reconstruct the environment to avoid the issue of threading
+        env = DummyVecEnv([make_env])
 
         ### Evaluation
         print(config["run_id"])
@@ -65,6 +68,9 @@ def train(env: YGOEnv, model, config):
                 action, _ = model.predict(obs, action_masks=mask, deterministic=True)
                 obs, reward, done, info = env.step(action)
 
+        # Manually close the connection to the server to ensure the resources are released
+        env.envs[0].unwrapped.finalize()
+
         ### Save best model
         # model.save() encounters error because the environment utilizes threading.
         if epoch % 10 == 0:
@@ -79,7 +85,6 @@ def train(env: YGOEnv, model, config):
 
 if __name__ == "__main__":
     train_env = DummyVecEnv([make_env for _ in range(my_config["parallel"])])
-    env = DummyVecEnv([make_env])
     model = MaskablePPO(
         my_config["policy_network"],
         train_env,
@@ -92,4 +97,4 @@ if __name__ == "__main__":
             "features_extractor_kwargs":{},
         }
     )
-    train(env, model, my_config)
+    train(model, my_config)
