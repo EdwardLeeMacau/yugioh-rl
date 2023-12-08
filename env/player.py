@@ -1,9 +1,7 @@
 import io
 import json
 import os
-import pysnooper
 
-from itertools import combinations
 from pprint import pformat
 from telnetlib import Telnet
 from typing import Dict, List, Tuple

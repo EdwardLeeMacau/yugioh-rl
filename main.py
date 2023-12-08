@@ -17,13 +17,14 @@ def main():
     pbar = tqdm(total = 1001)
     # player = env.player
     # policy = env._opponent
-    while True:
-        action = env.action_space.sample(mask=env.action_mask)
+    for _ in (pbar := tqdm(range(100000))):
+        action = env.action_space.sample(mask=env.action_masks)
         obs, reward, done, _, info = env.step(action)
         if done:
-            pbar.update(1)
-        if n > 1000:
-            breakpoint()
+            # pbar.update(1)
+            env.reset()
+        # if n > 1000:
+        #     breakpoint()
 
     env.finalize()
 

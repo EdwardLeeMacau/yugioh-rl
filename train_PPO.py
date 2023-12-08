@@ -3,16 +3,9 @@ import warnings
 import gymnasium as gym
 from gymnasium.envs.registration import register
 
-#import wandb
-#from wandb.integration.sb3 import WandbCallback
-
-import torch as th
-import pysnooper
-from stable_baselines3.common.monitor import Monitor
-from stable_baselines3.common.type_aliases import PyTorchObs
-from stable_baselines3.common.vec_env import DummyVecEnv, VecVideoRecorder
-from stable_baselines3 import A2C, DDPG, DQN, PPO, SAC, TD3
-from stable_baselines3.dqn.policies import MultiInputPolicy, QNetwork
+from sb3_contrib import MaskablePPO
+from sb3_contrib.common.maskable.utils import get_action_masks
+from stable_baselines3.common.vec_env import DummyVecEnv
 
 from model import MultiFeaturesExtractor
 from env.single_gym_env import YGOEnv
@@ -23,38 +16,17 @@ register(
     entry_point="env.single_gym_env:YGOEnv"
 )
 
-# Inherit from QNetwork to implement a masked DQN
-
-# TODO: Double check the impl. to ensure the action mask works during
-#       both training and inference time.
-class MaskedQNetwork(QNetwork):
-    def forward(self, obs: PyTorchObs) -> th.Tensor:
-        mask = obs['action_mask'].clone().to(th.bool)
-
-        q_values = super().forward(obs)
-        q_values[~mask] = -th.inf
-
-        return q_values
-
-class MaskedPolicy(MultiInputPolicy):
-    def make_q_net(self) -> QNetwork:
-        net_args = self._update_features_extractor(self.net_args, features_extractor=None)
-        return MaskedQNetwork(**net_args).to(self.device)
-
 
 # Set hyper params (configurations) for training
 my_config = {
     "run_id": "example",
 
-    "algorithm": DQN,
-    "policy_network": MaskedPolicy,
+    "policy_network": "MultiInputPolicy",
     "save_path": "models/sample_model",
 
-    "epoch_num": 100,
-    "timesteps_per_epoch": 25000,
+    "epoch_num": 1,
+    "timesteps_per_epoch": 100000,
     "eval_episode_num": 1,
-
-    #"normalize_images": False,
 }
 
 def make_env():
@@ -78,17 +50,18 @@ def train(env: YGOEnv, model, config):
         print("Epoch: ", epoch)
         avg_score = 0
         avg_highest = 0
-        # for seed in range(config["eval_episode_num"]):
-        #     done = False
+        for seed in range(config["eval_episode_num"]):
+            done = False
 
-        #     # Set seed using old Gym API
-        #     env.seed(seed)
-        #     obs = env.reset()
+            # Set seed using old Gym API
+            env.seed(seed)
 
-        #     # Interact with env using old Gym API
-        #     while not done:
-        #         action, _state = model.predict(obs, deterministic=False)
-        #         obs, reward, done, info = env.step(action)
+            # Interact with env using old Gym API
+            obs = env.reset()
+            while not done:
+                mask = get_action_masks(env)
+                action, _ = model.predict(obs, action_masks=mask, deterministic=True)
+                obs, reward, done, _, info = env.step(action)
 
         ### Save best model
         # model.save() encounters error because the environment utilizes threading.
@@ -105,14 +78,11 @@ def train(env: YGOEnv, model, config):
 if __name__ == "__main__":
     train_env = DummyVecEnv([make_env for _ in range(32)])
     env = DummyVecEnv([make_env])
-    model = my_config["algorithm"](
+    model = MaskablePPO(
         my_config["policy_network"],
         train_env,
-        learning_rate=0.0007,# 0.00007,
+        learning_rate=0.0003,
         gamma=0.90,
-        verbose=0,
-        seed=1109,
-        buffer_size=1000,
         tensorboard_log=os.path.join("logs", my_config["run_id"]),
         policy_kwargs={
             "features_extractor_class": MultiFeaturesExtractor,

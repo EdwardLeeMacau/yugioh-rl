@@ -187,6 +187,7 @@ class YGOEnv(gym.Env):
     _spec_map: Dict[str, int]
     _spec_unmap: Dict[int, str]
     _state: Tuple[Dict[str, Tensor], GameInfo]
+    _step: int
 
     def __init__(self, opponent: Policy = RandomPolicy()):
         super(YGOEnv, self).__init__()
@@ -196,6 +197,7 @@ class YGOEnv(gym.Env):
         self._process = None
 
         self._state = None
+        self._step = 0
 
         # define the action space and the observation space
         self.action_space = spaces.Discrete(len(self.ACTION2DIGITS.keys()), start=0)
@@ -246,8 +248,8 @@ class YGOEnv(gym.Env):
     def player(self) -> Player:
         return self._game._player1
 
-    @property
-    def action_mask(self) -> np.ndarray:
+    def action_masks(self) -> np.ndarray:
+        """ Return True if the action is valid. """
         return self._action_mask
 
     def set_illegal_move_reward(self, penalty: float=0) -> None:
@@ -282,6 +284,7 @@ class YGOEnv(gym.Env):
         self._spec_unmap = cards
 
         # Compose the action mask.
+        # Mark as True if the action is valid.
         mask = np.zeros(shape=(len(self._ACTIONS), ), dtype=np.int8)
         for opt in map(lambda x: self.ACTION2DIGITS[x], chain(options, cards.keys())):
             mask[opt] = 1
@@ -350,7 +353,6 @@ class YGOEnv(gym.Env):
         return [seed]
 
     def step(self, action: int) -> Tuple[Dict[str, Tensor], float, bool, bool, GameInfo]:
-        truncate = False
         reward = 0.
 
         # TODO: Figure out method to guarantee the action is valid from the policy model.
@@ -364,7 +366,7 @@ class YGOEnv(gym.Env):
             else:
                 self._encode_state(next_state_dict, self.player.list_valid_actions())
 
-            return self._state, reward, terminated, truncate, {}
+            return self._state, reward, terminated, False, {}
         else:
             # Illegal move. Nothing happens but the agent will be punished.
             return self._state, self._illegal_move_reward, False, False, {}
@@ -393,20 +395,21 @@ class YGOEnv(gym.Env):
             Additional information.
         """
         # Halt the previous launched thread.
+        #
+        # Assume that all resources are released after the instance
+        # is no longer referenced by any variables.
         if self._process is not None:
             self._process.terminate()
 
-        # Assume that all resources are released after the instance
-        # is no longer referenced by any variables.
         if self._game is not None:
             self._game.close()
 
         # Re-create the game instance.
-        self._game = Game().start()
-
         # Launch a new thread for the opponent's decision making.
+        self._game = Game().start()
         self._process = Process(target=game_loop, args=(self._game._player2, self._opponent))
         self._process.start()
+        self._step = 0
 
         # Wait until server acknowledges the player to make a decision.
         _, state = self.player.decode(self.player.wait())
