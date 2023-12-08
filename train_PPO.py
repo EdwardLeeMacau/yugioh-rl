@@ -63,7 +63,7 @@ def train(env: YGOEnv, model, config):
             while not done:
                 mask = get_action_masks(env)
                 action, _ = model.predict(obs, action_masks=mask, deterministic=True)
-                obs, reward, done, _, info = env.step(action)
+                obs, reward, done, info = env.step(action)
 
         ### Save best model
         # model.save() encounters error because the environment utilizes threading.
