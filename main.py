@@ -1,41 +1,32 @@
-import json
-import os
-from datetime import datetime
-from typing import List, Tuple
 
-from env.env import SinglePlayerEnv
-from env.game import GameState, Action
-from policy import RandomPolicy
+import gymnasium as gym
+from gymnasium.envs.registration import register
 from tqdm import tqdm
 
+from env.single_gym_env import YGOEnv
+
 def main():
-    env = SinglePlayerEnv(opponent=RandomPolicy())
+    register(
+        id="single_ygo",
+        entry_point="env.single_gym_env:YGOEnv"
+    )
+
+    env: YGOEnv = gym.make('single_ygo')
     env.reset()
+    n = 0
+    pbar = tqdm(total = 1001)
+    # player = env.player
+    # policy = env._opponent
+    for _ in (pbar := tqdm(range(100000))):
+        action = env.action_space.sample(mask=env.action_masks)
+        obs, reward, done, _, info = env.step(action)
+        if done:
+            # pbar.update(1)
+            env.reset()
+        # if n > 1000:
+        #     breakpoint()
 
-    # ---------------------- TODO: Implement the policy -----------------------
-    policy = RandomPolicy()
+    env.finalize()
 
-    # -------------------------------------------------------------------------
-
-    # Stress test: run 10000 games.
-    for _ in tqdm(range(10000), ncols=0):
-        start = datetime.now().strftime('%Y%m%d-%H%M%S')
-        terminated = False
-        trajectories: List[Tuple[GameState, Action]] = []
-        env.reset()
-        while not terminated:
-            state, reward, terminated, truncation, info = env.last()
-            if terminated:
-                break
-
-            actions = env.list_valid_actions()
-            action = policy.react(state, actions)
-            env.step(action)
-        breakpoint()
-
-        # with open(os.path.join('logs', f'{start}-{env._game._player1.username}.json'), 'w') as f:
-        #     json.dump(trajectories, f, indent=4)
-
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

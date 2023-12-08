@@ -1,4 +1,5 @@
 import json
+from itertools import chain
 from twisted.internet import reactor
 
 from ygo.duel_reader import DuelReader
@@ -30,13 +31,24 @@ def display_battle_menu(self, pl):
 		else:
 			pl.notify(pl._("Invalid option."))
 			return self.display_battle_menu(pl)
+
+	options = []
+	if self.attackable:
+		options.append('a')
+	if self.activatable:
+		options.append('c')
+	if self.to_m2:
+		options.append('m')
+	if self.to_ep:
+		options.append('e')
 	pl.notify(dump_game_info(
-		self, pl, **{ '?': {
+		self, pl, **{ 'actions': {
 			'requirement': 'BATTLE',
-			'attackable': [card.get_spec(pl) for card in self.attackable],
-			'activatable': [card.get_spec(pl) for card in self.activatable],
-			'to_m2': self.to_m2,
-			'to_ep': self.to_ep,
+			'options': options,
+			'targets': {
+				'a': [(card.get_spec(pl), card.code) for card in self.attackable],
+				'c': [(card.get_spec(pl), card.code) for card in self.activatable],
+			}
 		}}
 	))
 	pl.notify(DuelReader, r, no_abort=pl._("Invalid command."), prompt=pl._("Select an option:"), restore_parser=DuelParser)

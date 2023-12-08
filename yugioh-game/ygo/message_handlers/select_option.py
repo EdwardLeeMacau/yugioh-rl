@@ -20,12 +20,11 @@ def msg_select_option(self, data):
 
 def select_option(self, player, options):
 	pl = self.players[player]
-	def select(caller, idx):
 
+	def select(caller, idx):
 		opt = options[idx]
 
 		for p in self.players+self.watchers:
-
 			if opt > 10000:
 				string = card.get_strings(p)[opt & 0xf]
 			else:
@@ -51,14 +50,18 @@ def select_option(self, player, options):
 			string = pl._("Unknown option %d" % opt)
 			string = pl.strings['system'].get(opt, string)
 		opts.append(string)
+
 	m = DuelMenu(pl._("Select option:"), no_abort=pl._("Invalid option."), prompt=pl._("Select option:"), persistent=True, restore_parser=DuelParser)
 	for idx, opt in enumerate(opts):
 		m.item(opt)(lambda caller, idx=idx: select(caller, idx))
+
 	pl.notify(m)
+	# Inject a JSON string to indicate which actions are valid
 	pl.notify(dump_game_info(
-		self, pl, **{ '?': {
+		self, pl, **{ 'actions': {
 			'requirement': 'SELECT', 'min': 1, 'max': 1,
-			'choices': list(range(1, len(opts) + 1)),
+			'options': list(map(str, range(1, len(opts) + 1))),
+			'targets': [],
 		}}
 	))
 

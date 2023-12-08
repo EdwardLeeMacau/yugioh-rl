@@ -1,4 +1,5 @@
 import io
+from typing import List, Dict
 from twisted.internet import reactor
 
 from ygo.card import Card
@@ -33,9 +34,14 @@ def msg_select_unselect_card(self, data):
   self.cm.call_callbacks('select_unselect_card', player, finishable, cancelable, min, max, select_cards, unselect_cards)
   return data.read()
 
-def select_unselect_card(self, player, finishable, cancelable, min, max, select_cards, unselect_cards):
+def select_unselect_card(
+    self, player, finishable, cancelable, min, max, select_cards: List[Card], unselect_cards: List[Card]
+  ):
+
   pl = self.players[player]
-  pl.card_list = select_cards+unselect_cards
+  pl.card_list = select_cards + unselect_cards
+  _select_cards: Dict[str, Card] = { c.get_spec(pl): c for c in select_cards }
+
   def prompt():
     text = pl._("Check or uncheck %d to %d cards by entering their number")%(min, max)
     if cancelable and not finishable:
@@ -50,11 +56,12 @@ def select_unselect_card(self, player, finishable, cancelable, min, max, select_
       else:
         state = pl._("checked")
       pl.notify("%d: %s (%s)" % (i+1, name, state))
+
     pl.notify(dump_game_info(
-      self, pl, **{ '?': {
-        'requirement': 'SELECT',
-        'foreach': 1, 'min': min, 'max': max,
-        'choices': [card.code for card in select_cards],
+      self, pl, **{ 'actions': {
+        'requirement': 'SELECT', 'foreach': 1, 'min': min, 'max': max,
+        'options': [],
+        'targets': [(k, v.code) for k, v in _select_cards.items()],
       }}
     ))
     pl.notify(DuelReader, f, no_abort="Invalid command", restore_parser=DuelParser)
@@ -62,20 +69,21 @@ def select_unselect_card(self, player, finishable, cancelable, min, max, select_
   def error(text):
     pl.notify(text)
     return prompt()
+
   def f(caller):
     if caller.text == 'c' and (cancelable and not finishable) or caller.text == 'f' and finishable:
       self.set_responsei(-1)
       reactor.callLater(0, process_duel, self)
       return
-    try:
-      c = int(caller.text, 10)
-    except ValueError:
-      return error(pl._("Invalid command"))
-    if c < 1 or c > len(pl.card_list):
+
+    c: str = caller.text.split()[0]
+    if c not in _select_cards:
       return error(pl._("Number not in range"))
-    buf = bytes([1, c - 1])
+
+    buf = bytes([1, select_cards.index(_select_cards[c])])
     self.set_responseb(buf)
     reactor.callLater(0, process_duel, self)
+
   return prompt()
 
 MESSAGES = {26: msg_select_unselect_card}

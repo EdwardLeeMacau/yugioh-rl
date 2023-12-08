@@ -1,5 +1,6 @@
-from typing import Dict, List
-from itertools import combinations
+import pysnooper
+from collections import defaultdict
+from typing import Dict, List, Tuple
 
 Action = str
 GameState = Dict
@@ -13,84 +14,54 @@ class StateMachine:
         self._current = state_dict
         self._queue = []
 
-    def list_valid_actions(self) -> List[Action]:
-        options: List[Action] = []
+    def list_valid_actions(self, spec=False) -> Tuple[List[Action],
+                                                      List[Dict[Action, str]]]:
+        """ List valid actions.
 
+        Parameters
+        ----------
+        spec : bool
+            If True, return card specs instead of codes. Default: False.
+
+        Returns
+        -------
+        options : List[Action]
+            List of valid actions.
+
+        targets : List[Dict[Action, str]]
+            List of valid targets in pair (code, spec).
+        """
         match self._current.get('requirement', None):
-            case 'BATTLE':
-                options.extend(self._current['attackable'])
-                options.extend(self._current['activatable'])
-                options = list(set(options))
+            case 'BATTLE' | 'IDLE':
+                return (self._current['options'], {})
 
-                if self._current['to_m2']:
-                    options.append('m')
+            case 'BATTLE_ACTION' | 'IDLE_ACTION':
+                action = self._queue[-1]
+                target = {
+                    card[1] : card[0] for card in self._current['targets'][action]
+                }
 
-                if self._current['to_ep']:
-                    options.append('e')
-
-            case 'BATTLE_ACTION':
-                if self._queue[-1] in self._current['attackable']:
-                    options.append('a')
-
-                if self._queue[-1] in self._current['activatable']:
-                    options.append('c')
+                return ([], target, )
 
             case 'EFFECT':
                 options.append(self._current['effect'])
 
-            case 'IDLE':
-                options.extend(self._current['summonable'])
-                options.extend(self._current['mset'])
-                options.extend(self._current['repos'])
-                options.extend(self._current['spsummon'])
-                options.extend(self._current['set'])
-                options.extend(self._current['activate'])
+            case 'SELECT' | 'TRIBUTE' | 'ANNOUNCE_RACE':
+                # 'type': spec
+                #
+                # Return card specs to select, assume `n` is 1
+                # >>> ['h3', 'h4', 's5', ... ]
+                options = self._current['options']
+                targets = {
+                    card[1] : card[0] for card in self._current['targets'] if card[0] not in self._queue
+                }
 
-                options = list(set(options))
+                return (options, targets)
 
-                if self._current['to_bp']:
-                    options.append('b')
+            case _:
+                raise ValueError(f"Unknown requirement: {self._current.get('requirement', None)}")
 
-                if self._current['to_ep']:
-                    options.append('e')
-
-            case 'IDLE_ACTION':
-                if self._queue[-1] in self._current['summonable']:
-                    options.append('s')
-
-                if self._queue[-1] in self._current['mset']:
-                    options.append('m')
-
-                if self._queue[-1] in self._current['repos']:
-                    options.append('r')
-
-                if self._queue[-1] in self._current['spsummon']:
-                    options.append('c')
-
-                if self._queue[-1] in self._current['set']:
-                    options.append('t')
-
-                if self._queue[-1] in self._current['activate']:
-                    options.append('v')
-
-            case 'SELECT' | 'TRIBUTE' | 'YESNO' | "ANNOUNCE_RACE":
-                match self._current.get('type', 'indices'):
-                    case 'spec':
-                        # 'type': spec
-                        #
-                        # Return card specs to select, assume `n` is 1
-                        # >>> ['h3', 'h4', 's5', ... ]
-                        options = self._current['choices']
-                    case 'indices':
-                        # 'type': indices
-                        #
-                        # Return indices of cards to select
-                        # >>> ['1', '2', ... ]
-                        options  = set(map(str, range(1, len(self._current['choices']) + 1)))
-                        options -= set(self._queue)
-                        options  = list(options)
-
-        return options
+        return (options, targets)
 
     def to_string(self) -> str:
         if self._current.get('requirement', None) in ('SELECT', 'TRIBUTE'):
@@ -110,6 +81,10 @@ class StateMachine:
                 return False
 
             case 'BATTLE_ACTION':
+                self._queue.append(action)
+                return True
+
+            case 'IDLE_ACTION':
                 self._queue.insert(0, action)
                 return True
 
@@ -126,13 +101,12 @@ class StateMachine:
                 self._current['requirement'] = 'IDLE_ACTION'
                 return False
 
-            case 'IDLE_ACTION':
-                self._queue.append(action)
-                return True
-
-            case 'SELECT' | 'TRIBUTE' | 'YESNO' | "ANNOUNCE_RACE":
+            case 'SELECT' | 'TRIBUTE' | 'ANNOUNCE_RACE':
                 self._queue.append(action)
                 return len(self._queue) >= self._current.get('foreach', self._current['min'])
+
+            case _:
+                raise ValueError(f"Unknown requirement: {self._current.get('requirement', None)}")
 
     @classmethod
     def from_dict(cls, state_dict: Dict) -> 'StateMachine':

@@ -70,7 +70,9 @@ fi
 # Password: case sensitive
 now=$(sqlite3 game.db "SELECT datetime();")
 contents=$(jq -c . < deck.json)
-for i in $(seq 1 8);
+
+#  player0: use for checking server health
+for i in $(seq 0 256);
 do
     player=Player$i
     passwd=$(python3 sha256.py -p player$i)

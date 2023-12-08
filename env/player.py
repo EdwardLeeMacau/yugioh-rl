@@ -1,9 +1,7 @@
 import io
 import json
 import os
-import pysnooper
 
-from itertools import combinations
 from pprint import pformat
 from telnetlib import Telnet
 from typing import Dict, List, Tuple
@@ -35,8 +33,8 @@ class Player:
         account = accounts.allocate()
 
         # create a log file
-        os.makedirs('logs', exist_ok=True)
-        self._log = open(f'logs/{account.username}.log', 'wb')
+        # os.makedirs('logs', exist_ok=True)
+        # self._log = open(f'logs/{account.username}.log', 'wb')
 
         # member fields
         self._host = account.host
@@ -51,16 +49,16 @@ class Player:
         self._server.write(msg)
 
         # Debugging usage: print the message to the log file
-        self._log.write(msg)
-        self._log.flush()
+        # self._log.write(msg)
+        # self._log.flush()
         return None
 
     def _read_until(self, expected: bytes) -> bytes:
         msg = self._server.read_until(expected)
 
         # Debugging usage: print the message to the log file
-        self._log.write(msg)
-        self._log.flush()
+        # self._log.write(msg)
+        # self._log.flush()
 
         return msg
 
@@ -78,8 +76,8 @@ class Player:
         if bool(self._server.sock) == True:
             self._server.close()
 
-        if not self._log.closed:
-            self._log.close()
+        # if not self._log.closed:
+        #     self._log.close()
 
         accounts.free(Account(
             host=self._host, port=self._port,
@@ -148,7 +146,7 @@ class Player:
     # Player's actions
     # --------------------------------------------------------------------------
 
-    def list_valid_actions(self) -> List[Action]:
+    def list_valid_actions(self) -> Tuple[List[Action], List[Action]]:
         """ Decide an action from the valid actions. """
         return self._sm.list_valid_actions()
 
@@ -176,8 +174,8 @@ class Player:
         # Remove the separator and parse the JSON string
         embed = json.loads(embed[:-1])
 
-        self._log.write(bytes(pformat(embed), 'utf-8'))
-        self._log.flush()
+        # self._log.write(bytes(pformat(embed), 'utf-8'))
+        # self._log.flush()
 
         return embed
 
@@ -197,19 +195,18 @@ class Player:
             return True, {'score': embed['score']}
 
         # Auto deal with the PLACE requirement
-        while '?' in embed and embed['?']['requirement'] == 'PLACE':
-            n = embed['?']['min']
-            response = ' '.join(embed['?']['choices'][:n])
+        while 'actions' in embed and embed['actions']['requirement'] == 'PLACE':
+            n = embed['actions']['min']
+            response = ' '.join(embed['actions']['options'][:n])
 
             self._write(response.encode() + b'\r\n')
             embed = self.wait()
 
-        self._sm = StateMachine.from_dict(embed['?']) if '?' in embed else None
-        self._state = embed['state']
-
         if 'terminated' in embed:
             return True, {'score': embed['score']}
 
+        self._sm = StateMachine.from_dict(embed['actions']) if 'actions' in embed else None
+        self._state = embed['state']
         return False, embed['state']
 
     def step(self, action: Action) -> Tuple[bool, GameState]:

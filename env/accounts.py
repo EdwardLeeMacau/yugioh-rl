@@ -11,8 +11,9 @@ class Account:
 
 # Create a global pool to manage the accounts
 # User should allocate / free accounts through the APIs
-_POOL = Queue(maxsize=2)
-for i in range(1, 3):
+n = 128
+_POOL = Queue(maxsize=n)
+for i in range(1, n + 1):
     _POOL.put(Account(
         host="cubone.csie.org", port=4001,
         username=f"player{i}", password=f"player{i}"
