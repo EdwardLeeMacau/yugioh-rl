@@ -17,6 +17,8 @@ from stable_baselines3.dqn.policies import MultiInputPolicy, QNetwork
 from model import MultiFeaturesExtractor
 from env.single_gym_env import YGOEnv
 
+from eval import play_game_multiple_times, calc_winning_rate
+
 warnings.filterwarnings("ignore")
 register(
     id="single_ygo",
@@ -52,7 +54,7 @@ my_config = {
 
     "epoch_num": 100,
     "timesteps_per_epoch": 25000,
-    "eval_episode_num": 1,
+    "eval_episode_num": 10,
 
     #"normalize_images": False,
 }
@@ -64,6 +66,8 @@ def make_env():
 def train(env: YGOEnv, model, config):
     current_best_ = 0
     current_best = 0
+
+    max_winning_rate = 0.0
 
     for epoch in range(config["epoch_num"]):
         ### Train agent using SB3
@@ -92,10 +96,21 @@ def train(env: YGOEnv, model, config):
 
         ### Save best model
         # model.save() encounters error because the environment utilizes threading.
-        if epoch % 10 == 0:
-            print("Saving Model")
-            save_path = config["save_path"]
+        # if epoch % 10 == 0:
+        #     print("Saving Model")
+        #     save_path = config["save_path"]
             # model.save(f"{save_path}/{epoch}")
+
+        ### Evaluation time and save the model with higher winning rate
+        games_trajectories = play_game_multiple_times(config['eval_episode_num'], env, model)
+        winning_rate = calc_winning_rate(games_trajectories)        
+        print(f"Winning rate: {winning_rate}")
+
+        if winning_rate > max_winning_rate:
+            print("Saving Model")
+            max_winning_rate = winning_rate
+            model.save(f"{config['save_path']}/{epoch}")
+
         print("---------------")
 
     # Workaround for terminating the background threads
@@ -104,7 +119,7 @@ def train(env: YGOEnv, model, config):
 
 if __name__ == "__main__":
     train_env = DummyVecEnv([make_env for _ in range(32)])
-    env = DummyVecEnv([make_env])
+    env = make_env()
     model = my_config["algorithm"](
         my_config["policy_network"],
         train_env,

@@ -261,6 +261,15 @@ class YGOEnv(gym.Env):
         if self._spec_unmap.get(action, None) is not None:
             action = self._spec_unmap[action]
         return action
+    
+    # adding public version of _decode_action for evaluate
+    def decode_action(self, action: int) -> str:
+        # Decode the action as server's format first.
+        # If the action is related to a card (int), then further decode it as a position code.
+        action: str | int = self.DIGITS2ACTION[action]
+        if self._spec_unmap.get(action, None) is not None:
+            action = self._spec_unmap[action]
+        return action
 
     def _encode_state(self, game_state: Dict, actions: Tuple[List[Action], Dict[Action, Set[str]]]):
         """ Encode the game state into the tensor.
