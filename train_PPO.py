@@ -10,7 +10,7 @@ from stable_baselines3.common.vec_env import DummyVecEnv
 from model import MultiFeaturesExtractor
 from env.single_gym_env import YGOEnv
 
-from eval import play_game_multiple_times, calc_winning_rate
+from eval import play_game_multiple_times, calc_winning_rate, evaluate
 
 warnings.filterwarnings("ignore")
 register(
@@ -27,10 +27,10 @@ my_config = {
     "save_path": "models/sample_model",
 
     "epoch_num": 100,
-    "timesteps_per_epoch": 102400,
+    "timesteps_per_epoch": 4096,
     "n_steps": 128,
     "parallel": 32,
-    "eval_episode_num": 10,
+    "eval_episode_num": 100,
 }
 
 def make_env():
@@ -48,50 +48,20 @@ def train(model, config, eval_env):
         model.learn(
             total_timesteps=config["timesteps_per_epoch"],
             reset_num_timesteps=False,
+            progress_bar=True,
             log_interval=1,
         )
-
-        # Reconstruct the environment to avoid the issue of threading
-        env = DummyVecEnv([make_env])
 
         ### Evaluation
         print(config["run_id"])
         print("Epoch: ", epoch)
-        # avg_score = 0
-        # avg_highest = 0
-        # for seed in range(config["eval_episode_num"]):
-        #     done = False
 
-        #     # Set seed using old Gym API
-        #     env.seed(seed)
-
-        #     # Interact with env using old Gym API
-        #     obs = env.reset()
-        #     while not done:
-        #         mask = get_action_masks(env)
-        #         action, _ = model.predict(obs, action_masks=mask, deterministic=True)
-        #         obs, reward, done, info = env.step(action)
-
-        # # Manually close the connection to the server to ensure the resources are released
-        # env.envs[0].unwrapped.finalize()
-
-        ### Save best model
-        # model.save() encounters error because the environment utilizes threading.
-        # if epoch % 10 == 0:
-        #     print("Saving Model")
-        #     save_path = config["save_path"]
-            # model.save(f"{save_path}/{epoch}")
-        
         ### Evaluation time and save the model with higher winning rate
-        games_trajectories = play_game_multiple_times(config['eval_episode_num'], eval_env, model)
-        winning_rate = calc_winning_rate(games_trajectories)        
-        print(f"Winning rate: {winning_rate}")
+        trajectories = play_game_multiple_times(config['eval_episode_num'], eval_env, model)
+        metrics = evaluate(trajectories)
+        print(f"Winning rate: {metrics['winning_rate']:.2%}")
 
-        if winning_rate > max_winning_rate:
-            print("Saving Model")
-            max_winning_rate = winning_rate
-            model.save(f"{config['save_path']}/{epoch}")
-
+        model.save(f"{config['save_path']}/{epoch}")
         print("---------------")
 
     # Workaround for terminating the background threads

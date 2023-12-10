@@ -1,6 +1,6 @@
 import warnings
 from tqdm import tqdm
-from typing import List, Tuple
+from typing import Dict, List, Tuple
 
 import gymnasium as gym
 from gymnasium.envs.registration import register
@@ -18,7 +18,10 @@ register(
     entry_point="env.single_gym_env:YGOEnv"
 )
 
-def play_game(env: YGOEnv, model) -> List:
+# observation, action, decoded action, reward
+Trajectory = Tuple[GameState, Action, str, float]
+
+def play_game(env: YGOEnv, model) -> Trajectory:
     done = False
     trajectories = []
 
@@ -37,25 +40,30 @@ def play_game(env: YGOEnv, model) -> List:
         obs, reward, done, _, info = env.step(action)
 
         trajectories.append((obs, action, decoded_action, reward))
-    
+
     return trajectories
 
-def play_game_multiple_times(num_game: int, env: YGOEnv, model) -> List:
+def play_game_multiple_times(num_game: int, env: YGOEnv, model) -> List[Trajectory]:
     games_trajectories = []
     for _ in tqdm(range(num_game), desc="Evaluation"):
         trajectories = play_game(env, model)
         games_trajectories.append(trajectories)
-    
+
     return games_trajectories
 
-def calc_winning_rate(games_trajectories: List):
+def calc_winning_rate(trajectories: List[Trajectory]):
     winning_times = 0
-    for trajectories in games_trajectories:
-        obs, action, decoded_action, reward = trajectories[-1]
+    for trajectory in trajectories:
+        obs, action, decoded_action, reward = trajectory[-1]
         if reward > 0.0:
             winning_times += 1
 
-    return winning_times / len(games_trajectories)
+    return winning_times / len(trajectories)
+
+def evaluate(trajectories: List[Trajectory]) -> Dict:
+    return {
+        "winning_rate": calc_winning_rate(trajectories)
+    }
 
 def main():
     # config
@@ -66,7 +74,6 @@ def main():
     model = DQN.load(model_path)
 
     game_trajectories = play_game_multiple_times(num_game, env, model)
-
     winning_rate = calc_winning_rate(game_trajectories)
     print(f"winning_rate: {winning_rate}")
 

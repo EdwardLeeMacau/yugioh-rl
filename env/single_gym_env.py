@@ -20,7 +20,7 @@ from six import StringIO
 from datetime import datetime
 from multiprocessing import Process
 from threading import Thread, Event
-from typing import Dict, List, Tuple, Set
+from typing import Any, Dict, List, Tuple, Set
 from tqdm import tqdm
 from telnetlib import Telnet
 
@@ -34,7 +34,7 @@ from policy import RandomPolicy
 #   Global Variable   #
 #######################
 
-GameInfo = Dict
+GameInfo = Dict[str, Any]
 CardID = int
 
 ################
@@ -54,6 +54,7 @@ def game_loop(player: Player, policy: Policy) -> None:
 #############
 #   Class   #
 #############
+
 class YGOEnv(gym.Env):
     metadata = {
         "render_modes": ["human"],
@@ -186,7 +187,8 @@ class YGOEnv(gym.Env):
     _action_mask: np.ndarray | Tensor
     _spec_map: Dict[str, int]
     _spec_unmap: Dict[int, str]
-    _state: Tuple[Dict[str, Tensor], GameInfo]
+    _state: Dict[str, Tensor]
+    _info: GameInfo
 
     def __init__(self, opponent: Policy = RandomPolicy()):
         super(YGOEnv, self).__init__()
@@ -261,7 +263,7 @@ class YGOEnv(gym.Env):
         if self._spec_unmap.get(action, None) is not None:
             action = self._spec_unmap[action]
         return action
-    
+
     # adding public version of _decode_action for evaluate
     def decode_action(self, action: int) -> str:
         # Decode the action as server's format first.
@@ -356,6 +358,9 @@ class YGOEnv(gym.Env):
 
         return multi_hot
 
+    def _LP_reward(self, state: GameState) -> float:
+        return (state['player']['lp'] - state['opponent']['lp']) / 16000.
+
     def seed(self, seed=None) -> None:
         self.np_random, seed = seeding.np_random(seed)
         return [seed]
@@ -368,13 +373,15 @@ class YGOEnv(gym.Env):
             action = self._decode_action(action)
 
             terminated, next_state_dict = self.player.step(action)
+            self._info['steps'] += 1
             if terminated:
                 reward = next_state_dict.get('score', 0.0)
-                # self.reset()
+                self._info['outcome'] = reward
             else:
+                reward = self._LP_reward(next_state_dict) # Comment out to disable LP reward
                 self._encode_state(next_state_dict, self.player.list_valid_actions())
 
-            return self._state, reward, terminated, False, {}
+            return self._state, reward, terminated, False, self._info
         else:
             # Illegal move. Nothing happens but the agent will be punished.
             return self._state, self._illegal_move_reward, False, False, {}
@@ -413,8 +420,10 @@ class YGOEnv(gym.Env):
             self._game = Game()
 
         # Re-create the game instance.
-        # Launch a new thread for the opponent's decision making.
         self._game.start()
+        self._info = { 'steps': 0, 'outcome': 0.0 }
+
+        # Launch a new thread for the opponent's decision making.
         self._process = Process(target=game_loop, args=(self._game._player2, self._opponent))
         self._process.start()
 
@@ -424,7 +433,7 @@ class YGOEnv(gym.Env):
         # Encode the game state into the tensor.
         self._encode_state(state, self.player.list_valid_actions())
 
-        return self._state, {}
+        return self._state, self._info
 
     def finalize(self):
         """ Finalize the game.
