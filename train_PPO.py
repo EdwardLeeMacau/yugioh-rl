@@ -38,6 +38,7 @@ def make_env():
 def train(model, config):
     current_best_ = 0
     current_best = 0
+    outcome_list = []
 
     for epoch in range(config["epoch_num"]):
         ### Train agent using SB3
@@ -67,6 +68,10 @@ def train(model, config):
                 mask = get_action_masks(env)
                 action, _ = model.predict(obs, action_masks=mask, deterministic=True)
                 obs, reward, done, info = env.step(action)
+        outcome = "win" if info[0]['outcome'] > 0 else 'loss'
+        outcome_list.append(info[0]['outcome'])
+        moving_win_rate = np.sum(np.array(outcome_list[-10:]) > 0)/len(outcome_list[-10:])
+        print("『{:s}』 with {:d} steps, moving average win rate (last 10 eval result) = {:.4f}".format(outcome, info[0]['steps'], moving_win_rate))
 
         # Manually close the connection to the server to ensure the resources are released
         env.envs[0].unwrapped.finalize()
