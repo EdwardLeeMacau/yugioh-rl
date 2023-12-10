@@ -92,7 +92,7 @@ class Player:
     # Actions for game initializing
     # --------------------------------------------------------------------------
 
-    def create_room(self) -> None:
+    def create_room(self, advantages: Dict) -> None:
         # create room
         self._read_until(b'\r\n')
         self._write(b'create\r\n')
@@ -100,6 +100,12 @@ class Player:
 
         self._write(b'banlist unlimited\r\n')
         self._read_until(b"The banlist for this room was set to unlimited.\r\n")
+        self._read_until(b'\r\n')
+
+        self._write(f'lifepoints 1 {advantages["player1"].get("lifepoints", 8000)}\r\n'.encode())
+        self._read_until(b'\r\n')
+
+        self._write(f'lifepoints 2 {advantages["player2"].get("lifepoints", 8000)}\r\n'.encode())
         self._read_until(b'\r\n')
 
         self._write(b'finish\r\n')

@@ -15,7 +15,14 @@ from eval import play_game_multiple_times, calc_winning_rate, evaluate
 warnings.filterwarnings("ignore")
 register(
     id="single_ygo",
-    entry_point="env.single_gym_env:YGOEnv"
+    entry_point="env.single_gym_env:YGOEnv",
+    kwargs={
+        'advantages': {
+            'player1': { 'lifepoints': 8000 },
+            'player2': { 'lifepoints': 8000 }
+        },
+    }
+    # TODO: Parse the arguments from the config file
 )
 
 
