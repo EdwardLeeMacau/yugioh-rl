@@ -1,7 +1,11 @@
+import copy
 import warnings
 from itertools import chain
 from tqdm import tqdm
 from typing import Dict, List, Tuple
+
+from queue import Queue
+from joblib import Parallel, delayed
 
 import gymnasium as gym
 from gymnasium.envs.registration import register
@@ -54,11 +58,26 @@ def play_game(env: YGOEnv, model) -> Trajectory:
 
     return trajectories
 
-def play_game_multiple_times(num_game: int, env: YGOEnv, model) -> List[Trajectory]:
-    games_trajectories = []
-    for _ in tqdm(range(num_game), desc="Evaluation"):
-        trajectories = play_game(env, model)
-        games_trajectories.append(trajectories)
+def play_game_for_multi_process(resource_queue: Queue) -> Trajectory:
+    env, model = resource_queue.get()
+    trajectories = play_game(env, model)
+    resource_queue.put((env, model))
+    return trajectories
+
+def play_game_multiple_times(num_game: int, env: YGOEnv, model, multi_process=True, num_resource=32, nums_worker=16) -> List[Trajectory]:
+    if multi_process:
+        # multi-process
+        resource_queue = Queue()
+        for _ in range(num_resource):
+            resource_queue.put((copy.deepcopy(env), model))
+        
+        games_trajectories = Parallel(n_jobs=nums_worker, require='sharedmem')(delayed(play_game_for_multi_process)(resource_queue) for _ in tqdm(range(num_game), desc="Evaluation"))
+    else:
+        # single process
+        games_trajectories = []
+        for _ in tqdm(range(num_game), desc="Evaluation"):
+            trajectories = play_game(env, model)
+            games_trajectories.append(trajectories)
 
     return games_trajectories
 
