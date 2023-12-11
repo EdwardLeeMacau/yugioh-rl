@@ -1,4 +1,5 @@
 import warnings
+from itertools import chain
 from tqdm import tqdm
 from typing import Dict, List, Tuple
 
@@ -41,6 +42,16 @@ def play_game(env: YGOEnv, model) -> Trajectory:
 
         trajectories.append((obs, action, decoded_action, reward))
 
+    # Unwrap env to access the raw state
+    # * env.player._state to access observation
+    # * env.player._sm._current to access valid actions
+    env = env.unwrapped
+    lp = env.player._state['player']['lp'], env.player._state['opponent']['lp']
+    deck = env.player._state['player']['deck'], env.player._state['opponent']['deck']
+
+    if all(map(lambda x: x > 0, chain(lp, deck))):
+        raise ValueError(f"Game is terminated unexpectedly. recv: {env.player._state}")
+
     return trajectories
 
 def play_game_multiple_times(num_game: int, env: YGOEnv, model) -> List[Trajectory]:
@@ -67,11 +78,11 @@ def evaluate(trajectories: List[Trajectory]) -> Dict:
 
 def main():
     # config
-    num_game = 10
-    model_path = "YOUR_MODEL_PATH"
+    num_game = 100
+    model_path = "models/sample_model/0.zip"
 
     env = gym.make('single_ygo')
-    model = DQN.load(model_path)
+    model = MaskablePPO.load(model_path)
 
     game_trajectories = play_game_multiple_times(num_game, env, model)
     winning_rate = calc_winning_rate(game_trajectories)

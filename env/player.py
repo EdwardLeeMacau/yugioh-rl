@@ -146,9 +146,10 @@ class Player:
     # Player's actions
     # --------------------------------------------------------------------------
 
-    def list_valid_actions(self) -> Tuple[List[Action], List[Action]]:
+    def list_valid_actions(self) -> Tuple[List[Action],
+                                          List[Dict[Action, str]]]:
         """ Decide an action from the valid actions. """
-        return self._sm.list_valid_actions()
+        return self._sm.list_valid_actions() if self._sm is not None else ([], {})
 
     def wait(self) -> Dict:
         """ Wait until the server ask player to decide an action.
@@ -192,7 +193,8 @@ class Player:
         # Check if the key 'terminated' is in the JSON string
         # 1: win, -1: lose, 0: draw
         if 'terminated' in embed:
-            return True, {'score': embed['score']}
+            self._sm, self._state = None, embed['state']
+            return True, embed['state']
 
         # Auto deal with the PLACE requirement
         while 'actions' in embed and embed['actions']['requirement'] == 'PLACE':
@@ -203,7 +205,8 @@ class Player:
             embed = self.wait()
 
         if 'terminated' in embed:
-            return True, {'score': embed['score']}
+            self._sm, self._state = None, embed['state']
+            return True, embed['state']
 
         self._sm = StateMachine.from_dict(embed['actions']) if 'actions' in embed else None
         self._state = embed['state']

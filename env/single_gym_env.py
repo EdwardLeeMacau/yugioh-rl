@@ -366,25 +366,28 @@ class YGOEnv(gym.Env):
         return [seed]
 
     def step(self, action: int) -> Tuple[Dict[str, Tensor], float, bool, bool, GameInfo]:
+        # Illegal move. Nothing happens but the agent will be punished.
+        if not self._action_mask[action]:
+            return self._state, self._illegal_move_reward, False, False, self._info
+
+        # Otherwise, interact with the environment.
         reward = 0.
+        action = self.decode_action(action)
+        terminated, next_state_dict = self.player.step(action)
+        self._info['steps'] += 1
 
-        # TODO: Figure out method to guarantee the action is valid from the policy model.
-        if self._action_mask[action] == 1:
-            action = self._decode_action(action)
+        # * Win/Lose reward
+        outcome = next_state_dict.get('score', .0)
+        self._info['outcome'] = outcome
+        reward += outcome
 
-            terminated, next_state_dict = self.player.step(action)
-            self._info['steps'] += 1
-            if terminated:
-                reward = next_state_dict.get('score', 0.0)
-                self._info['outcome'] = reward
-            else:
-                reward = self._LP_reward(next_state_dict) # Comment out to disable LP reward
-                self._encode_state(next_state_dict, self.player.list_valid_actions())
+        # * LP reward
+        reward += self._LP_reward(next_state_dict)
 
-            return self._state, reward, terminated, False, self._info
-        else:
-            # Illegal move. Nothing happens but the agent will be punished.
-            return self._state, self._illegal_move_reward, False, False, {}
+        valid_actions = self.player.list_valid_actions()
+        self._encode_state(next_state_dict, valid_actions)
+
+        return self._state, reward, terminated, False, self._info
 
     def last(self) -> Tuple[Dict[str, Tensor], GameInfo]:
         return self._state, {}
