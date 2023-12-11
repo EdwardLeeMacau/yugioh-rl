@@ -28,6 +28,7 @@ The game is based on YGO04 environment with these revision:
 2. Deploy databases to Yu-Gi-Oh MUD server
 
     ```bash
+    git-lfs pull
     cp assets/game.db yugioh-game/game.db;
     cp assets/cards.cdb yugioh-game/locale/en/cards.cdb;
     ```
@@ -45,8 +46,8 @@ The game is based on YGO04 environment with these revision:
     cd yugioh-game;
 
     docker run --rm -p 4000:4000/tcp -it \
-        -v ./ygo:/usr/src/app/ygo \
-        -v ./ygo.py:/usr/src/app/ygo.py \
+        -v $(pwd)/ygo:/usr/src/app/ygo \
+        -v $(pwd)/ygo.py:/usr/src/app/ygo.py \
         --name yugioh
         yugioh \
         /bin/bash
