@@ -16,12 +16,10 @@ warnings.filterwarnings("ignore")
 register(
     id="single_ygo",
     entry_point="env.single_gym_env:YGOEnv",
-    kwargs={"opponent": RandomPolicy()
-    },)
-
-#    {
-#        "opponent": PseudoSelfPlayPolicy_0(model_path="./models/sample_model/50"),
-#    }"""
+    kwargs={
+        "opponent": PseudoSelfPlayPolicy_0(model_path="./models/sample_model/50"),
+    }
+)
 
 
 
@@ -35,7 +33,7 @@ my_config = {
     "epoch_num": 100,
     "timesteps_per_epoch": 102400,
     "n_steps": 128,
-    "parallel": 32,
+    "parallel": 8,
     "eval_episode_num": 1,
 }
 

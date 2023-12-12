@@ -241,7 +241,7 @@ class PseudoSelfPlayPolicy_0(Policy):
     def react(self, state: GameState, actions: Tuple[List[Action], Dict[Action, Set[str]]]) -> Action:
         model = MaskablePPO.load(self._model_path)
         self._encode_state(state, actions)
-        action, _state = model.predict(self._state, deterministic=True)
+        action, _state = model.predict(self._state, action_masks=self._action_mask, deterministic=True)
         action = self._decode_action(action.item())
         del model
         return action
