@@ -2,7 +2,7 @@ import random
 
 from abc import ABC, abstractmethod
 from enum import IntEnum
-from typing import List, Tuple
+from typing import Dict, List, Tuple
 
 from env import accounts
 from env.player import Player, GameState, Action
@@ -28,13 +28,14 @@ class Policy(ABC):
         raise NotImplementedError
 
 class Game:
-    _player1: Player | None
-    _player2: Player | None
+    _player1: Player
+    _player2: Player
+    _advantages: Dict
 
-    # FIXME: Allocate accounts from the same game server.
-    def __init__(self) -> None:
+    def __init__(self, advantages: Dict) -> None:
         self._player1 = Player()
         self._player2 = Player()
+        self._advantages = advantages
 
     def close(self) -> None:
         if self._player1 is not None:
@@ -46,7 +47,7 @@ class Game:
         return None
 
     def start(self) -> 'Game':
-        self._player1.create_room()
+        self._player1.create_room(self._advantages)
         self._player2.join(self._player1._username)
         self._player1.start_game()
 

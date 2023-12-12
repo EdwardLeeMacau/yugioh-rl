@@ -190,13 +190,19 @@ class YGOEnv(gym.Env):
     _state: Dict[str, Tensor]
     _info: GameInfo
 
-    def __init__(self, opponent: Policy = RandomPolicy()):
+    # No advantages for both players, just for demonstration.
+    DEFAULT_ADVANTAGES = {
+        'player1': {},
+        'player2': { 'lifepoints': 8000 },
+    }
+
+    def __init__(self, opponent: Policy = RandomPolicy(), advantages: Dict = DEFAULT_ADVANTAGES):
         super(YGOEnv, self).__init__()
         # define the Game and the opponent object
         self._game = None
         self._opponent = opponent
         self._process = None
-
+        self._advantages = advantages
         self._state = None
 
         # define the action space and the observation space
@@ -420,7 +426,7 @@ class YGOEnv(gym.Env):
             self._process.terminate()
 
         if self._game is None:
-            self._game = Game()
+            self._game = Game(self._advantages)
 
         # Re-create the game instance.
         self._game.start()
