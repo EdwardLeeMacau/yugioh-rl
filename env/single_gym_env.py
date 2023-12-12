@@ -20,7 +20,7 @@ from six import StringIO
 from datetime import datetime
 from multiprocessing import Process
 from threading import Thread, Event
-from typing import Dict, List, Tuple, Set
+from typing import Any, Dict, List, Tuple, Set
 from tqdm import tqdm
 from telnetlib import Telnet
 
@@ -34,7 +34,7 @@ from policy import RandomPolicy
 #   Global Variable   #
 #######################
 
-GameInfo = Dict
+GameInfo = Dict[str, Any]
 CardID = int
 
 ################
@@ -54,6 +54,7 @@ def game_loop(player: Player, policy: Policy) -> None:
 #############
 #   Class   #
 #############
+
 class YGOEnv(gym.Env):
     metadata = {
         "render_modes": ["human"],
@@ -186,7 +187,8 @@ class YGOEnv(gym.Env):
     _action_mask: np.ndarray | Tensor
     _spec_map: Dict[str, int]
     _spec_unmap: Dict[int, str]
-    _state: Tuple[Dict[str, Tensor], GameInfo]
+    _state: Dict[str, Tensor]
+    _info: GameInfo
 
     def __init__(self, opponent: Policy = RandomPolicy()):
         super(YGOEnv, self).__init__()
@@ -255,6 +257,15 @@ class YGOEnv(gym.Env):
         self._illegal_move_reward = penalty
 
     def _decode_action(self, action: int) -> str:
+        # Decode the action as server's format first.
+        # If the action is related to a card (int), then further decode it as a position code.
+        action: str | int = self.DIGITS2ACTION[action]
+        if self._spec_unmap.get(action, None) is not None:
+            action = self._spec_unmap[action]
+        return action
+
+    # adding public version of _decode_action for evaluate
+    def decode_action(self, action: int) -> str:
         # Decode the action as server's format first.
         # If the action is related to a card (int), then further decode it as a position code.
         action: str | int = self.DIGITS2ACTION[action]
@@ -347,40 +358,36 @@ class YGOEnv(gym.Env):
 
         return multi_hot
 
-    def _LP_Reward(self, state: GameState) -> float:
-        return (state['player']['lp'] - state['opponent']['lp'])/16000.
+    def _LP_reward(self, state: GameState) -> float:
+        return (state['player']['lp'] - state['opponent']['lp']) / 16000.
 
     def seed(self, seed=None) -> None:
         self.np_random, seed = seeding.np_random(seed)
         return [seed]
 
     def step(self, action: int) -> Tuple[Dict[str, Tensor], float, bool, bool, GameInfo]:
+        # Illegal move. Nothing happens but the agent will be punished.
+        if not self._action_mask[action]:
+            return self._state, self._illegal_move_reward, False, False, self._info
+
+        # Otherwise, interact with the environment.
         reward = 0.
-        try:
-            isinstance(self._info, dict)
-        except:
-            self._info = {'steps': 0,
-                         'outcome': 0,
-                         }
+        action = self.decode_action(action)
+        terminated, next_state_dict = self.player.step(action)
+        self._info['steps'] += 1
 
-        # TODO: Figure out method to guarantee the action is valid from the policy model.
-        if self._action_mask[action] == 1:
-            action = self._decode_action(action)
+        # * Win/Lose reward
+        outcome = next_state_dict.get('score', .0)
+        self._info['outcome'] = outcome
+        reward += outcome
 
-            terminated, next_state_dict = self.player.step(action)
-            self._info['steps'] = self._info['steps'] + 1
-            if terminated:
-                reward = next_state_dict.get('score', 0.0)
-                self._info['outcome'] = reward
-                # self.reset()
-            else:
-                reward = self._LP_Reward(next_state_dict)
-                self._encode_state(next_state_dict, self.player.list_valid_actions())
+        # * LP reward
+        reward += self._LP_reward(next_state_dict)
 
-            return self._state, reward, terminated, False, self._info
-        else:
-            # Illegal move. Nothing happens but the agent will be punished.
-            return self._state, self._illegal_move_reward, False, False, {}
+        valid_actions = self.player.list_valid_actions()
+        self._encode_state(next_state_dict, valid_actions)
+
+        return self._state, reward, terminated, False, self._info
 
     def last(self) -> Tuple[Dict[str, Tensor], GameInfo]:
         return self._state, {}
@@ -416,8 +423,10 @@ class YGOEnv(gym.Env):
             self._game = Game()
 
         # Re-create the game instance.
-        # Launch a new thread for the opponent's decision making.
         self._game.start()
+        self._info = { 'steps': 0, 'outcome': 0.0 }
+
+        # Launch a new thread for the opponent's decision making.
         self._process = Process(target=game_loop, args=(self._game._player2, self._opponent))
         self._process.start()
 
@@ -426,13 +435,6 @@ class YGOEnv(gym.Env):
 
         # Encode the game state into the tensor.
         self._encode_state(state, self.player.list_valid_actions())
-
-        try:
-            self._info = {'steps': 0,
-                         'outcome': 0,
-                         }
-        except:
-            pass
 
         return self._state, self._info
 
