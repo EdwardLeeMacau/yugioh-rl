@@ -33,7 +33,7 @@ my_config = {
     "epoch_num": 100,
     "timesteps_per_epoch": 102400,
     "n_steps": 128,
-    "parallel": 8,
+    "parallel": 4,
     "eval_episode_num": 1,
 }
 

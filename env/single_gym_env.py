@@ -18,7 +18,8 @@ from torch import Tensor
 from itertools import chain, combinations
 from six import StringIO
 from datetime import datetime
-from multiprocessing import Process
+#from multiprocessing import Process
+from torch.multiprocessing import Process as Process
 from threading import Thread, Event
 from typing import Dict, List, Tuple, Set
 from tqdm import tqdm

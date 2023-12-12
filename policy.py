@@ -15,6 +15,11 @@ from typing import Dict, List, Tuple, Optional, Set
 # costumized package
 from env.game import GameState, Action, Policy
 
+################
+#   Variable   #
+################
+ckt_dict = {}
+
 #############
 #   Class   #
 #############
@@ -144,6 +149,8 @@ class PseudoSelfPlayPolicy_0(Policy):
 
     def __init__(self, model_path: str = None):
         self._model_path = model_path
+        if not any(ckt_dict):
+            ckt_dict['0'] = MaskablePPO.load(model_path)
 
     def _encode_state(self, game_state: Dict, actions: Tuple[List[Action], Dict[Action, Set[str]]]):
         """ Encode the game state into the tensor.
@@ -239,9 +246,15 @@ class PseudoSelfPlayPolicy_0(Policy):
         return action
 
     def react(self, state: GameState, actions: Tuple[List[Action], Dict[Action, Set[str]]]) -> Action:
+        """
+        ---old version---
         model = MaskablePPO.load(self._model_path)
         self._encode_state(state, actions)
         action, _state = model.predict(self._state, action_masks=self._action_mask, deterministic=True)
         action = self._decode_action(action.item())
         del model
+        """
+        self._encode_state(state, actions)
+        action, _state = ckt_dict['0'].predict(self._state, action_masks=self._action_mask, deterministic=True)
+        action = self._decode_action(action.item())
         return action
