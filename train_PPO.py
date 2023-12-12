@@ -2,6 +2,7 @@ import os
 import warnings
 import gymnasium as gym
 from gymnasium.envs.registration import register
+import numpy as np
 
 from sb3_contrib import MaskablePPO
 from sb3_contrib.common.maskable.utils import get_action_masks
@@ -9,6 +10,7 @@ from stable_baselines3.common.vec_env import DummyVecEnv
 
 from model import MultiFeaturesExtractor
 from env.single_gym_env import YGOEnv
+from policy import *
 
 from eval import play_game_multiple_times, calc_winning_rate, evaluate
 
@@ -17,13 +19,18 @@ register(
     id="single_ygo",
     entry_point="env.single_gym_env:YGOEnv",
     kwargs={
+        "opponent": RandomPolicy(),
         'advantages': {
             'player1': { 'lifepoints': 8000 },
             'player2': { 'lifepoints': 8000 }
-        },
-    }
+                    },
+        'reward_type': 'step count reward'
+        # reward type should be 'win/loss', 'LP', or 'step count reward'
+            },
+
     # TODO: Parse the arguments from the config file
 )
+
 
 
 # Set hyper params (configurations) for training

@@ -18,7 +18,7 @@ from torch import Tensor
 from itertools import chain, combinations
 from six import StringIO
 from datetime import datetime
-from multiprocessing import Process
+from torch.multiprocessing import Process as Process
 from threading import Thread, Event
 from typing import Any, Dict, List, Tuple, Set
 from tqdm import tqdm
@@ -28,7 +28,6 @@ from telnetlib import Telnet
 sys.path.insert(0, os.path.abspath(os.getcwd()))
 
 from env.game import Action, Game, GameState, Player, Policy
-from policy import RandomPolicy
 
 #######################
 #   Global Variable   #
@@ -46,7 +45,10 @@ def game_loop(player: Player, policy: Policy) -> None:
 
     while not terminated:
         options, targets = player.list_valid_actions()
-        action = policy.react(None, options + list(targets.values()))
+        if type(policy).__name__ == "RandomPolicy":
+            action = policy.react(state, options + list(targets.values()))
+        else:
+            action = policy.react(state, (options, targets))
         terminated, state = player.step(action)
 
     return
@@ -196,7 +198,7 @@ class YGOEnv(gym.Env):
         'player2': { 'lifepoints': 8000 },
     }
 
-    def __init__(self, opponent: Policy = RandomPolicy(), advantages: Dict = DEFAULT_ADVANTAGES):
+    def __init__(self, reward_type: str = "", opponent: Policy = None, advantages: Dict = DEFAULT_ADVANTAGES):
         super(YGOEnv, self).__init__()
         # define the Game and the opponent object
         self._game = None
@@ -204,6 +206,7 @@ class YGOEnv(gym.Env):
         self._process = None
         self._advantages = advantages
         self._state = None
+        self._reward_type = 0 if reward_type == "win/loss" else (1 if reward_type == "LP" else -1) # this should be "win/loss reward", "LP reward", "step count reward"
 
         # define the action space and the observation space
         self.action_space = spaces.Discrete(len(self.ACTION2DIGITS.keys()), start=0)
@@ -364,8 +367,8 @@ class YGOEnv(gym.Env):
 
         return multi_hot
 
-    def _LP_reward(self, state: GameState) -> float:
-        return (state['player']['lp'] - state['opponent']['lp']) / 16000.
+    def _reward_shaping(self, state: GameState) -> float:
+        return (state['player']['lp'] - state['opponent']['lp']) / (16000. * self._info['steps'] ** (self._reward_type < 0 ))
 
     def seed(self, seed=None) -> None:
         self.np_random, seed = seeding.np_random(seed)
@@ -387,8 +390,8 @@ class YGOEnv(gym.Env):
         self._info['outcome'] = outcome
         reward += outcome
 
-        # * LP reward
-        reward += self._LP_reward(next_state_dict)
+        # * reward shaping
+        reward += self._reward_shaping(next_state_dict) * np.abs(self._reward_type)
 
         valid_actions = self.player.list_valid_actions()
         self._encode_state(next_state_dict, valid_actions)
@@ -433,6 +436,7 @@ class YGOEnv(gym.Env):
         self._info = { 'steps': 0, 'outcome': 0.0 }
 
         # Launch a new thread for the opponent's decision making.
+        torch.multiprocessing.set_start_method('spawn', force=True)
         self._process = Process(target=game_loop, args=(self._game._player2, self._opponent))
         self._process.start()
 
