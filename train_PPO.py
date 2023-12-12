@@ -2,6 +2,7 @@ import os
 import warnings
 import gymnasium as gym
 from gymnasium.envs.registration import register
+import numpy as np
 
 from sb3_contrib import MaskablePPO
 from sb3_contrib.common.maskable.utils import get_action_masks
@@ -9,12 +10,19 @@ from stable_baselines3.common.vec_env import DummyVecEnv
 
 from model import MultiFeaturesExtractor
 from env.single_gym_env import YGOEnv
+from policy import *
 
 warnings.filterwarnings("ignore")
 register(
     id="single_ygo",
-    entry_point="env.single_gym_env:YGOEnv"
-)
+    entry_point="env.single_gym_env:YGOEnv",
+    kwargs={"opponent": RandomPolicy()
+    },)
+
+#    {
+#        "opponent": PseudoSelfPlayPolicy_0(model_path="./models/sample_model/50"),
+#    }"""
+
 
 
 # Set hyper params (configurations) for training
@@ -46,6 +54,7 @@ def train(model, config):
             total_timesteps=config["timesteps_per_epoch"],
             reset_num_timesteps=False,
             log_interval=1,
+            progress_bar=True
         )
 
         # Reconstruct the environment to avoid the issue of threading
@@ -81,7 +90,7 @@ def train(model, config):
         if epoch % 10 == 0:
             print("Saving Model")
             save_path = config["save_path"]
-            # model.save(f"{save_path}/{epoch}")
+            model.save(f"{save_path}/{epoch}")
         print("---------------")
 
     # Workaround for terminating the background threads

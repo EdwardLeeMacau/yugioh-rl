@@ -28,7 +28,7 @@ from telnetlib import Telnet
 sys.path.insert(0, os.path.abspath(os.getcwd()))
 
 from env.game import Action, Game, GameState, Player, Policy
-from policy import RandomPolicy
+#from policy import RandomPolicy, PseudoSelfPlayPolicy
 
 #######################
 #   Global Variable   #
@@ -46,7 +46,10 @@ def game_loop(player: Player, policy: Policy) -> None:
 
     while not terminated:
         options, targets = player.list_valid_actions()
-        action = policy.react(None, options + list(targets.values()))
+        if type(policy).__name__ == "RandomPolicy":
+            action = policy.react(state, options + list(targets.values()))
+        else:
+            action = policy.react(state, (options, targets))
         terminated, state = player.step(action)
 
     return
@@ -188,7 +191,7 @@ class YGOEnv(gym.Env):
     _spec_unmap: Dict[int, str]
     _state: Tuple[Dict[str, Tensor], GameInfo]
 
-    def __init__(self, opponent: Policy = RandomPolicy()):
+    def __init__(self, opponent: Policy = None):
         super(YGOEnv, self).__init__()
         # define the Game and the opponent object
         self._game = None
@@ -418,6 +421,7 @@ class YGOEnv(gym.Env):
         # Re-create the game instance.
         # Launch a new thread for the opponent's decision making.
         self._game.start()
+        torch.multiprocessing.set_start_method('spawn', force=True)
         self._process = Process(target=game_loop, args=(self._game._player2, self._opponent))
         self._process.start()
 
