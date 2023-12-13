@@ -69,7 +69,7 @@ def train(model, config, eval_env):
         metrics = evaluate(trajectories)
         print(f"Winning rate: {metrics['winning_rate']:.2%}")
 
-        model.save(os.path.join(config['save_path'], epoch))
+        model.save(os.path.join(config['save_path'], str(epoch)))
         print("---------------")
 
     # Workaround for terminating the background threads
