@@ -1,9 +1,15 @@
 # Python Intermediates
 __pycache__
 
+# Vim Swap Files
+**.swp
+
 # Auto-generated log files for debugging usage.
 logs
 runs
 
 # Checkpoint files for model training.
 models
+
+# Downloaded packages
+**.tar.gz
