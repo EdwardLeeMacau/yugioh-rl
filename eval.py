@@ -26,7 +26,7 @@ register(
 # observation, action, decoded action, reward
 Trajectory = Tuple[GameState, Action, str, float]
 
-def play_game(env: YGOEnv, model) -> Trajectory:
+def play_game(env: YGOEnv, model: MaskablePPO) -> Trajectory:
     done = False
     trajectories = []
 
@@ -34,11 +34,8 @@ def play_game(env: YGOEnv, model) -> Trajectory:
     trajectories.append((obs, None, None, None))
 
     while not done:
-        if type(model) == MaskablePPO:
-            mask = get_action_masks(env)
-            action, state = model.predict(obs, action_masks=mask, deterministic=True)
-        else:
-            action, state = model.predict(obs, deterministic=True)
+        mask = get_action_masks(env)
+        action, state = model.predict(obs, action_masks=mask, deterministic=True)
         action = int(action)
 
         decoded_action = env.decode_action(action)
@@ -70,8 +67,12 @@ def play_game_multiple_times(num_game: int, env: YGOEnv, model, multi_process=Tr
         resource_queue = Queue()
         for _ in range(num_resource):
             resource_queue.put((copy.deepcopy(env), model))
-        
+
         games_trajectories = Parallel(n_jobs=nums_worker, require='sharedmem')(delayed(play_game_for_multi_process)(resource_queue) for _ in tqdm(range(num_game), desc="Evaluation"))
+        while not resource_queue.empty():
+            env, model = resource_queue.get()
+            env.close()
+
     else:
         # single process
         games_trajectories = []

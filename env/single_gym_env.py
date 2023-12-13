@@ -439,7 +439,7 @@ class YGOEnv(gym.Env):
 
         return self._state, self._info
 
-    def finalize(self):
+    def close(self):
         """ Finalize the game.
 
         A workaround for the bug of the multiprocessing module.
