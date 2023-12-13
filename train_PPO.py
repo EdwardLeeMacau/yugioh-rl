@@ -1,50 +1,43 @@
+import json
 import os
+import shutil
 import warnings
 import gymnasium as gym
+from datetime import datetime
 from gymnasium.envs.registration import register
-import numpy as np
 
 from sb3_contrib import MaskablePPO
-from sb3_contrib.common.maskable.utils import get_action_masks
 from stable_baselines3.common.vec_env import DummyVecEnv
 
 from model import MultiFeaturesExtractor
-from env.single_gym_env import YGOEnv
-from policy import *
+from env_config import ENV_CONFIG
 
-from eval import play_game_multiple_times, calc_winning_rate, evaluate
+from eval import play_game_multiple_times, evaluate
 
 warnings.filterwarnings("ignore")
 register(
     id="single_ygo",
     entry_point="env.single_gym_env:YGOEnv",
-    kwargs={
-        "opponent": RandomPolicy(),
-        'advantages': {
-            'player1': { 'lifepoints': 8000 },
-            'player2': { 'lifepoints': 8000 }
-                    },
-        'reward_type': 'step count reward'
-        # reward type should be 'win/loss', 'LP', or 'step count reward'
-            },
-
-    # TODO: Parse the arguments from the config file
+    kwargs=ENV_CONFIG,
 )
 
 
-
 # Set hyper params (configurations) for training
-my_config = {
-    "run_id": "example",
+# Modify run_id to current time
+RUN_ID = datetime.now().strftime("%Y%m%d-%H%M%S")
+CONFIG = {
+    "run_id": RUN_ID,
 
     "policy_network": "MultiInputPolicy",
-    "save_path": "models/sample_model",
+    "save_path": "models",
 
     "epoch_num": 100,
-    "timesteps_per_epoch": 4096,
+    "timesteps_per_epoch": 32768,
     "n_steps": 128,
     "parallel": 32,
     "eval_episode_num": 100,
+    "learning_rate": 0.0003,
+    "gamma": 0.90,
 }
 
 def make_env():
@@ -76,7 +69,7 @@ def train(model, config, eval_env):
         metrics = evaluate(trajectories)
         print(f"Winning rate: {metrics['winning_rate']:.2%}")
 
-        model.save(f"{config['save_path']}/{epoch}")
+        model.save(os.path.join(config['save_path'], epoch))
         print("---------------")
 
     # Workaround for terminating the background threads
@@ -84,18 +77,28 @@ def train(model, config, eval_env):
 
 
 if __name__ == "__main__":
-    train_env = DummyVecEnv([make_env for _ in range(my_config["parallel"])])
+    train_env = DummyVecEnv([make_env for _ in range(CONFIG["parallel"])])
     eval_env = make_env()
     model = MaskablePPO(
-        my_config["policy_network"],
+        CONFIG["policy_network"],
         train_env,
-        learning_rate=0.0003,
-        gamma=0.90,
-        n_steps=my_config["n_steps"],
-        tensorboard_log=os.path.join("logs", my_config["run_id"]),
+        learning_rate=CONFIG["learning_rate"],
+        gamma=CONFIG["gamma"],
+        n_steps=CONFIG["n_steps"],
+        tensorboard_log=os.path.join("logs", CONFIG["run_id"]),
         policy_kwargs={
             "features_extractor_class": MultiFeaturesExtractor,
             "features_extractor_kwargs":{},
         }
     )
-    train(model, my_config, eval_env)
+
+    # Backup config.py to the script output directory
+    os.makedirs(os.path.join(CONFIG['save_path'], CONFIG["run_id"]), exist_ok=True)
+    shutil.copyfile(
+        "env_config.py",
+        os.path.join(CONFIG['save_path'], CONFIG["run_id"], "env_config.py")
+    )
+    with open(os.path.join(CONFIG['save_path'], CONFIG['run_id'], "config.json"), "w") as f:
+        json.dump(CONFIG, f, indent=4)
+
+    train(model, CONFIG, eval_env)
