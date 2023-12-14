@@ -32,12 +32,12 @@ CONFIG = {
     "save_path": "models",
 
     "epoch_num": 100,
-    "timesteps_per_epoch": 32768,
+    "timesteps_per_epoch": 102400,
     "n_steps": 128,
     "parallel": 32,
     "eval_episode_num": 100,
     "learning_rate": 0.0003,
-    "gamma": 0.90,
+    "gamma": 0.99,
 }
 
 def make_env():
@@ -69,7 +69,7 @@ def train(model, config, eval_env):
         metrics = evaluate(trajectories)
         print(f"Winning rate: {metrics['winning_rate']:.2%}")
 
-        model.save(os.path.join(config['save_path'], str(epoch)))
+        model.save(os.path.join(config['save_path'], CONFIG['run_id'], str(epoch)))
         print("---------------")
 
     # Workaround for terminating the background threads

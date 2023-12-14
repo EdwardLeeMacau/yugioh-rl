@@ -3,7 +3,7 @@ def msg_new_turn(self, data):
 	self.cm.call_callbacks('new_turn', tp)
 	return data[2:]
 
-def new_turn(self, tp):
+def new_turn(self, tp: int):
 	self.tp = tp
 	self.players[tp].notify(self.players[tp]._("Your turn."))
 	op = self.players[1 - tp]

@@ -1,33 +1,25 @@
 ###############
 #   Package   #
 ###############
+import os
+import sys
+from itertools import chain
+from typing import Any, Dict, List, Set, Tuple
+
 import gymnasium as gym
+import numpy as np
+import torch
 from gymnasium import spaces
 from gymnasium.utils import seeding
-from gymnasium.envs.registration import register
-
-import numpy as np
-import pysnooper
-
-import logging
-import sys
-import os
-import torch
 from torch import Tensor
-
-from itertools import chain, combinations
-from six import StringIO
-from datetime import datetime
 from torch.multiprocessing import Process as Process
-from threading import Thread, Event
-from typing import Any, Dict, List, Tuple, Set
-from tqdm import tqdm
-from telnetlib import Telnet
 
 # insert path for package
 sys.path.insert(0, os.path.abspath(os.getcwd()))
 
-from env.game import Action, Game, GameState, Player, Policy
+from .game import (CARDS2IDX, DECK, OPTIONS, POSSIBLE_ACTIONS, Action, Game,
+                      GameState, Player, Policy)
+from .state import StateMachine
 
 #######################
 #   Global Variable   #
@@ -41,7 +33,9 @@ CardID = int
 ################
 
 def game_loop(player: Player, policy: Policy) -> None:
-    terminated, state = player.decode(player.wait())
+    terminated, state, action = player.decode_server_msg(player.wait())
+    player._sm = StateMachine.from_dict(action)
+    player._state = state
 
     while not terminated:
         options, targets = player.list_valid_actions()
@@ -49,7 +43,7 @@ def game_loop(player: Player, policy: Policy) -> None:
             action = policy.react(state, options + list(targets.values()))
         else:
             action = policy.react(state, (options, targets))
-        terminated, state = player.step(action)
+        terminated, state, _ = player.step(action)
 
     return
 
@@ -63,109 +57,12 @@ class YGOEnv(gym.Env):
         "render_fps": 2,
     }
 
-    _RACES = [
-        "Warrior",
-        "Spellcaster",
-        "Fairy",
-        "Fiend",
-        "Zombie",
-        "Machine",
-        "Aqua",
-        "Pyro",
-        "Rock",
-        "Winged Beast",
-        "Plant",
-        "Insect",
-        "Thunder",
-        "Dragon",
-        "Beast",
-        "Beast-Warrior",
-        "Dinosaur",
-        "Fish",
-        "Sea Serpent",
-        "Reptile",
-        "Psychic",
-        "Divine-Beast",
-        "Creator God",
-        "Wyrm",
-        "Cyberse",
-    ]
-
-    # List of all cards in the YGO04 format.
-    # Use for assigning the cards into the one-hot encoding / multi-hot encoding.
-    #
-    # TODO: Accelerate index queries with hash map
-    _DECK_LIST = [
-        None,       # empty space
-        72989439,
-        77585513,
-        18036057,
-        63749102,
-        88240808,
-        33184167,
-        39507162,
-        71413901,
-        76922029,
-        74131780,
-        78706415,
-        79575620,
-        23205979,
-        8131171,
-        19613556,
-        32807846,
-        55144522,
-        42829885,
-        17375316,
-        4031928,
-        45986603,
-        69162969,
-        71044499,
-        72302403,
-        5318639,
-        70828912,
-        29401950,
-        53582587,
-        56120475,
-        60082869,
-        83555666,
-        97077563,
-        7572887,
-        74191942,
-        73915051,
-        44095762,
-        31560081,
-        73915052,   # Scapegoat (should map to the same encoding)
-        73915053,   # Scapegoat
-        73915054,   # Scapegoat
-        73915055,   # Scapegoat
-        0,          # hidden card
-    ]
-
-    # Enumerate actions
-    _ACTIONS = [
-        # *_DECK_LIST,
-        *_DECK_LIST,
-        *_RACES,    # Announce races
-        "e", # enter end phase
-        "z", # back
-        "s", # summon this card in face-up attack position
-        "m", # summon this card in face-down defense position/ enter main phase
-        "t", # set this card (Trap/Magic)
-        "v", # activate this card
-        "c", # cancel
-        "b", # enter battle phase
-        "y", # yes
-        "n", # no
-        "a", # attack
-        "r", # reposition
-        '1', # select option of Don Zaloog
-        '2',
-        '3', # FACEUP.DEFENSE
-        '4',
-    ]
+    # option (string) -> option (int)
+    OPTIONS2DIGITS = { option: i for i, option in enumerate(OPTIONS, 1) }
+    OPTIONS2DIGITS[None] = 0
 
     # action (string | CardID) -> action (int)
-    ACTION2DIGITS = { action: i for i, action in enumerate(_ACTIONS) }
+    ACTION2DIGITS = { action: i for i, action in enumerate(POSSIBLE_ACTIONS) }
 
     # action (int) -> action (string | CardID)
     DIGITS2ACTION = { value: key for key, value in ACTION2DIGITS.items() }
@@ -175,8 +72,52 @@ class YGOEnv(gym.Env):
 
     # Type hinting for public fields.
 
-    action_space: spaces.Discrete
-    observation_space: spaces.Dict
+    action_space: spaces.Discrete = spaces.Discrete(len(ACTION2DIGITS.keys()), start=0)
+    observation_space: spaces.Dict = spaces.Dict({
+
+        # Current game phase (affect the valid actions)
+        "phase": spaces.Discrete(6),
+
+        # Is current player's turn
+        "turn": spaces.MultiBinary(1),
+
+        # -------------------------------- Players information --------------------------------
+
+        # Player's life points (normalized to [0, 1])
+        "agent_LP": spaces.Box(low=-1., high=1., shape=(1, ), dtype=np.float32),
+        # Player's hand (multi-hot encoding, number of cards in hand <= 3)
+        "agent_hand": spaces.Box(low=0., high=3., shape=(len(DECK), ), dtype=np.float32),
+        # Player's deck (number of cards in deck), can infer the remaining cards in deck
+        "agent_deck": spaces.Box(low=0, high=40, shape=(1, ), dtype=np.float32),
+        # Player's grave (multi-hot encoding)
+        "agent_grave": spaces.Box(low=0., high=4., shape=(len(DECK), ), dtype=np.float32),
+        # Player's banished cards (multi-hot encoding)
+        "agent_removed": spaces.Box(low=0., high=4., shape=(len(DECK), ), dtype=np.float32),
+
+        # ------------------------------ Valid action information -----------------------------
+
+        # Previous option (one-hot encoding, extra 1-dim for none)
+        "last_option": spaces.Discrete(1 + len(OPTIONS)),
+
+        # Valid action information
+        "action_masks": spaces.MultiBinary(len(ACTION2DIGITS.keys())),
+
+        # ------------------------------- Opponents information -------------------------------
+
+        "oppo_LP": spaces.Box(low=-1, high=1., shape=(1, ), dtype=np.float32),
+        "oppo_hand": spaces.Box(low=0., high=40., shape=(1, ), dtype=np.float32),
+        "oppo_deck": spaces.Box(low=0, high=40, shape=(1, ), dtype=np.float32),
+        "oppo_grave": spaces.Box(low=0., high=4., shape=(len(DECK), ), dtype=np.float32),
+        "oppo_removed": spaces.Box(low=0., high=4., shape=(len(DECK), ), dtype=np.float32),
+
+        # --------------------------------- Table information ---------------------------------
+
+        "t_agent_m": spaces.MultiBinary(5 * (len(DECK) + 2)),
+        "t_oppo_m": spaces.MultiBinary(5 * (len(DECK) + 2)),
+        "t_agent_s": spaces.MultiBinary(5 * (len(DECK) + 2)),
+        "t_oppo_s": spaces.MultiBinary(5 * (len(DECK) + 2)),
+    })
+
 
     # Type hinting for private fields.
 
@@ -186,7 +127,7 @@ class YGOEnv(gym.Env):
 
     # Field for caching the state of the game.
 
-    _action_mask: np.ndarray | Tensor
+    _action_masks: np.ndarray | Tensor
     _spec_map: Dict[str, int]
     _spec_unmap: Dict[int, str]
     _state: Dict[str, Tensor]
@@ -206,46 +147,17 @@ class YGOEnv(gym.Env):
         self._process = None
         self._advantages = advantages
         self._state = None
-        self._reward_type = 0 if reward_type == "win/loss" else (1 if reward_type == "LP" else -1) # this should be "win/loss reward", "LP reward", "step count reward"
 
-        # define the action space and the observation space
-        self.action_space = spaces.Discrete(len(self.ACTION2DIGITS.keys()), start=0)
-        # trap card have not been implemented.
-        self.observation_space = spaces.Dict({
-
-            # Current game phase (affect the valid actions)
-            "phase": spaces.Discrete(6),
-
-            # -------------------------------- Players information --------------------------------
-
-            # Player's life points (normalized to [0, 1])
-            "agent_LP": spaces.Box(low=-1., high=1., shape=(1, ), dtype=np.float32),
-            # Player's hand (multi-hot encoding, number of cards in hand <= 3)
-            "agent_hand": spaces.Box(low=0., high=3., shape=(40, ), dtype=np.float32),
-            # Player's deck (number of cards in deck), can infer the remaining cards in deck
-            "agent_deck": spaces.Box(low=0, high=40, shape=(1, ), dtype=np.float32),
-            # Player's grave (multi-hot encoding)
-            "agent_grave": spaces.Box(low=0., high=4., shape=(40, ), dtype=np.float32),
-            # Player's banished cards (multi-hot encoding)
-            "agent_removed": spaces.Box(low=0., high=4., shape=(40, ), dtype=np.float32),
-            # Valid action information
-            "action_mask": spaces.MultiBinary(len(self.ACTION2DIGITS.keys())),
-
-            # ------------------------------- Opponents information -------------------------------
-
-            "oppo_LP": spaces.Box(low=-1, high=1., shape=(1, ), dtype=np.float32),
-            "oppo_hand": spaces.Box(low=0., high=40., shape=(1, ), dtype=np.float32),
-            "oppo_deck": spaces.Box(low=0, high=40, shape=(1, ), dtype=np.float32),
-            "oppo_grave": spaces.Box(low=0., high=4., shape=(40, ), dtype=np.float32),
-            "oppo_removed": spaces.Box(low=0., high=4., shape=(40, ), dtype=np.float32),
-
-            # --------------------------------- Table information ---------------------------------
-
-            "t_agent_m": spaces.MultiBinary(225),
-            "t_oppo_m": spaces.MultiBinary(225),
-            "t_agent_s": spaces.MultiBinary(225),
-            "t_oppo_s": spaces.MultiBinary(225),
-        })
+        # `reward_type` should be "win/loss reward", "LP reward", or "step count reward"
+        match reward_type:
+            case "win/loss":
+                self._reward_type = 0
+            case "LP":
+                self._reward_type = 1
+            case "step count reward":
+                self._reward_type = -1
+            case _:
+                raise ValueError(f"Invalid reward type: {reward_type}")
 
         # Set negative reward (penalty) for illegal moves (optional)
         self.set_illegal_move_reward(-0.2)
@@ -260,7 +172,7 @@ class YGOEnv(gym.Env):
 
     def action_masks(self) -> np.ndarray:
         """ Return True if the action is valid. """
-        return self._action_mask
+        return self._action_masks
 
     def set_illegal_move_reward(self, penalty: float=0) -> None:
         self._illegal_move_reward = penalty
@@ -295,16 +207,17 @@ class YGOEnv(gym.Env):
 
         # Compose the action mask.
         # Mark as True if the action is valid.
-        mask = np.zeros(shape=(len(self._ACTIONS), ), dtype=np.int8)
+        mask = np.zeros(shape=(len(POSSIBLE_ACTIONS), ), dtype=np.int8)
         for opt in map(lambda x: self.ACTION2DIGITS[x], chain(options, cards.keys())):
             mask[opt] = 1
 
-        self._action_mask = mask
+        self._action_masks = mask
         self._state = {
 
             # --------------------------------- Games information ---------------------------------
 
             "phase": self.PHASE2DIGITS[game_state['phase']],
+            "turn": np.array([game_state['turn']], dtype=np.float32),
 
             # -------------------------------- Players information --------------------------------
 
@@ -316,7 +229,8 @@ class YGOEnv(gym.Env):
 
             # ------------------------------ Valid action information -----------------------------
 
-            "action_mask": self._action_mask.astype(np.float32),
+            "last_option": self.OPTIONS2DIGITS[game_state['last_option']],
+            "action_masks": self._action_masks.astype(np.float32),
 
             # ------------------------------- Opponents information -------------------------------
 
@@ -338,23 +252,24 @@ class YGOEnv(gym.Env):
     def _IDStateList_to_vector(cls, id_state_list: List[Tuple[int, int]]) -> np.ndarray:
         assert len(id_state_list) == 5, "The card list is padded to 5 with empty card (None)"
 
-        frame_array = np.zeros(shape=(5, 45), dtype=np.float32)
-        # frame_array[:, 0] = cls._DECK_LIST.index(None)
-        # frame_array[:, 1] = 4
+        frame_array = np.zeros(shape=(5, len(DECK) + 2), dtype=np.float32)
+        for i, id_state in enumerate(id_state_list):
+            card_id, pos = id_state[0], id_state[1]
 
-        # One-hot encoding for the card ID.
-        for i in range(len(id_state_list)):
-            frame_array[i, cls._DECK_LIST.index(id_state_list[i][0])] = 1
-            # frame_array[i, 1] = id_state_list[i][1]
+            # One-hot encoding for the card ID.
+            frame_array[i, CARDS2IDX[card_id]] = 1
+
+            # One-hot encoding for the position (UP/DOWN, ATK/DEF).
+            frame_array[i, len(DECK):] = [pos & 0b101, pos & 0b011]
 
         return frame_array
 
     @classmethod
     def _IDList_to_MultiHot(cls, id_list: List[int]) -> np.ndarray:
-        multi_hot = np.zeros(shape=(40, ), dtype=np.float32)
+        multi_hot = np.zeros(shape=(len(DECK), ), dtype=np.float32)
 
         for card_id in id_list:
-            multi_hot[cls._DECK_LIST.index(card_id)] += 1
+            multi_hot[CARDS2IDX[card_id]] += 1
 
         return multi_hot
 
@@ -367,13 +282,14 @@ class YGOEnv(gym.Env):
 
     def step(self, action: int) -> Tuple[Dict[str, Tensor], float, bool, bool, GameInfo]:
         # Illegal move. Nothing happens but the agent will be punished.
-        if not self._action_mask[action]:
+        if not self._action_masks[action]:
             return self._state, self._illegal_move_reward, False, False, self._info
 
         # Otherwise, interact with the environment.
         reward = 0.
         action = self.decode_action(action)
-        terminated, next_state_dict = self.player.step(action)
+        terminated, next_state_dict, concrete_action = self.player.step(action)
+        next_state_dict['last_option'] = self.player.last_option()
         self._info['steps'] += 1
 
         # * Win/Lose reward
@@ -432,7 +348,10 @@ class YGOEnv(gym.Env):
         self._process.start()
 
         # Wait until server acknowledges the player to make a decision.
-        _, state = self.player.decode(self.player.wait())
+        terminated, state, action = self.player.decode_server_msg(self.player.wait())
+        self.player._sm = StateMachine.from_dict(action)
+        self.player._state = state
+        state['last_option'] = self.player.last_option()
 
         # Encode the game state into the tensor.
         self._encode_state(state, self.player.list_valid_actions())
