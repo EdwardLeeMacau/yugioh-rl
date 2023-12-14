@@ -185,7 +185,11 @@ class YGOEnv(gym.Env):
             action = self._spec_unmap[action]
         return action
 
-    def _encode_state(self, game_state: Dict, actions: Tuple[List[Action], Dict[Action, Set[str]]]):
+    def _encode_state(
+            self,
+            game_state: Dict,
+            actions: Tuple[List[Action], Dict[Action, Set[str]]]
+        ):
         """ Encode the game state into the tensor.
 
         This function changes the interval variables `_action_mask`, `_state` and `_spec_map`.

@@ -9,8 +9,8 @@ import numpy as np
 from sb3_contrib import MaskablePPO
 
 # customized package
-from env.game import (CARDS2IDX, DECK, POSSIBLE_ACTIONS, Action, GameState,
-                      Policy)
+from env.game import (CARDS2IDX, DECK, OPTIONS, POSSIBLE_ACTIONS, Action,
+                      GameState, Policy)
 
 ################
 #   Variable   #
@@ -21,12 +21,17 @@ ckt_dict = {}
 #############
 #   Class   #
 #############
+
 class RandomPolicy(Policy):
     def react(self, state: GameState, actions: List[Action]) -> Action:
         return random.choice(actions)
 
 # the following class is the old version of the pseudo-self-play opponent
 class PseudoSelfPlayPolicy(Policy):
+    # option (string) -> option (int)
+    OPTIONS2DIGITS = { option: i for i, option in enumerate(OPTIONS, 1) }
+    OPTIONS2DIGITS[None] = 0
+
     # action (string | CardID) -> action (int)
     ACTION2DIGITS = { action: i for i, action in enumerate(POSSIBLE_ACTIONS) }
 
@@ -63,7 +68,7 @@ class PseudoSelfPlayPolicy(Policy):
 
         # Compose the action mask.
         # Mark as True if the action is valid.
-        mask = np.zeros(shape=(len(self._ACTIONS), ), dtype=np.int8)
+        mask = np.zeros(shape=(len(POSSIBLE_ACTIONS), ), dtype=np.int8)
         for opt in map(lambda x: self.ACTION2DIGITS[x], chain(options, cards.keys())):
             mask[opt] = 1
 
@@ -73,6 +78,7 @@ class PseudoSelfPlayPolicy(Policy):
             # --------------------------------- Games information ---------------------------------
 
             "phase": self.PHASE2DIGITS[game_state['phase']],
+            "turn": np.array([game_state['turn']], dtype=np.float32),
 
             # -------------------------------- Players information --------------------------------
 
@@ -84,7 +90,8 @@ class PseudoSelfPlayPolicy(Policy):
 
             # ------------------------------ Valid action information -----------------------------
 
-            "action_mask": self._action_mask.astype(np.float32),
+            "last_option": self.OPTIONS2DIGITS[game_state['last_option']],
+            "action_masks": self._action_masks.astype(np.float32),
 
             # ------------------------------- Opponents information -------------------------------
 
