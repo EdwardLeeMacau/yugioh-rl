@@ -15,7 +15,8 @@ n = 128
 _POOL = Queue(maxsize=n)
 for i in range(1, n + 1):
     _POOL.put(Account(
-        host="localhost", port=4001,
+        # host="localhost", port=4001,
+        host="cubone.csie.org", port=4000,
         username=f"player{i}", password=f"player{i}"
     ))
 

@@ -64,7 +64,9 @@ def train(model, config, eval_env):
         trajectories = play_game_multiple_times(config['eval_episode_num'], eval_env, model)
         metrics = evaluate(trajectories)
         model.logger.record("eval/winning_rate", metrics["winning_rate"])
+        model.logger.record("eval/avg_step", metrics["avg_step"])
         print(f"Winning rate: {metrics['winning_rate']:.2%}")
+        print(f"Average step: {metrics['avg_step']:.2%}")
 
         model.save(os.path.join(config['save_path'], CONFIG['run_id'], str(epoch)))
         print("---------------")
