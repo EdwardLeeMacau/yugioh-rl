@@ -95,7 +95,7 @@ class Room(Joinable):
 				globals.server.challenge.send_message(None, __("{player} disbanded their duel room."), player = player.nickname)
 
 			return
-			
+
 		if (self.started or self.duel_count > 0) and abort:
 			self.duel_count = 0
 			self.points = [0, 0]
@@ -107,7 +107,7 @@ class Room(Joinable):
 				pl.set_parser('RoomParser')
 
 			globals.server.check_reboot()
-				
+
 	def set_banlist(self, list):
 
 		if list.lower() != 'tcg' and list.lower() != 'ocg' and list.lower() != 'none' and not list.lower() in globals.banlists or self.open:
@@ -181,6 +181,7 @@ class Room(Joinable):
 			random.shuffle(self.teams[2])
 			duel = Duel()
 			duel.add_players(self.teams[start_team]+self.teams[3-start_team], shuffle_players=False)
+			duel.agent = start_team - 1
 			duel.set_player_info(0, self.lp[0])
 			duel.set_player_info(1, self.lp[1])
 			duel.room = self
@@ -263,7 +264,7 @@ class Room(Joinable):
 
 		if self.disbandable:
 			self.inform()
-	
+
 	def announce_victory(self, pl, announce = True):
 		if pl in self.teams[1]:
 			self.points[0] += 1
@@ -271,7 +272,7 @@ class Room(Joinable):
 		else:
 			self.points[1] += 1
 			self.decider = 1
-			
+
 		if self.disbandable:
 			self.inform(announce)
 

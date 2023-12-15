@@ -32,8 +32,8 @@ def yesno(self, player, desc):
 		opt = "String %d" % desc
 		opt = pl.strings['system'].get(desc, opt)
 
-	pl.notify(dump_game_info(
-		self, pl, **{ 'actions': {
+	self.players[self.agent].notify(dump_game_info(
+		self, pl, recv=int(self.agent != player), **{ 'actions': {
 			'requirement': 'SELECT', 'min': 1, 'max': 1,
 			'options': ['y', 'n'], 'targets': [],
 		}}

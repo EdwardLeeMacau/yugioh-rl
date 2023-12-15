@@ -20,7 +20,7 @@ class Player:
     _state: GameState
 
     _log: io.StringIO
-    _server: Telnet
+    _conn: Telnet
 
     def __init__(self) -> None:
         # Allocate an account.
@@ -31,16 +31,16 @@ class Player:
         self.open()
 
     def _write(self, msg: bytes) -> None:
-        self._server.write(msg)
+        self._conn.write(msg)
         return None
 
     def _read_until(self, expected: bytes) -> bytes:
-        msg = self._server.read_until(expected)
+        msg = self._conn.read_until(expected)
         return msg
 
     def open(self) -> None:
         """ Open a connection to the server. """
-        self._server = Telnet(self._account.host, self._account.port)
+        self._conn = Telnet(self._account.host, self._account.port)
 
         self._read_until(b'\r\n')
         self._write(self._account.username.encode() + b'\r\n')
@@ -49,8 +49,8 @@ class Player:
 
     def close(self) -> None:
         """ Free resources when the object is deleted. """
-        if bool(self._server.sock) == True:
-            self._server.close()
+        if bool(self._conn.sock) == True:
+            self._conn.close()
 
         accounts.free(Account(
             host=self._account.host, port=self._account.port,
@@ -126,7 +126,7 @@ class Player:
     # --------------------------------------------------------------------------
 
     def list_valid_actions(self) -> Tuple[List[Action],
-                                          List[Dict[Action, str]]]:
+                                          Dict[Action, List[Action]]]:
         """ Decide an action from the valid actions. """
         return self._sm.list_valid_actions() if self._sm is not None else ([], {})
 
@@ -152,75 +152,27 @@ class Player:
         _ = self._read_until(b"|")
 
         # Load the JSON string until the separator is found
-        embed = self._server.read_until(b"|")
+        embed = self._conn.read_until(b"|")
 
         # Remove the separator and parse the JSON string
         embed = json.loads(embed[:-1])
         return embed
 
-    def decode_server_msg(
-            self,
-            embed: Dict
-        ) -> Tuple[bool, Dict, Dict | None, float | None]:
-        """
-        Returns
-        -------
-        terminated : bool
-            Whether the game is over.
-
-        state : Dict
-            The state in Dict format.
-
-        actions : Dict | None
-            The valid actions in Dict format.
-
-        score: float | None
-            The result of the game.
-        """
-        return (
-            'terminated' in embed,
-            embed.get('state', None),
-            embed.get('actions', None),
-            embed.get('score', None)
-        )
-
     def step(
             self,
             action: Action
-        ) -> Tuple[bool, GameState, str | None]:
+        ) -> str | None:
         """
         Returns
         -------
-        terminated : bool
-            Whether the game is over.
-
-        state: GameState
-            The state of the game.
-
-        action: str | None
-            The concrete action sent to the server.
-            None if the step is only the part of the valid action.
+        action : str | None
+            Concrete action to be taken.
         """
         if not self._sm.step(action):
-            return False, self._state, None, None
+            return None
 
         # Form a complete message to server
         action = self._sm.to_string()
         self._write(action.encode() + b'\r\n')
 
-        while True:
-            # Wait for next decision
-            terminated, state, action, score = self.decode_server_msg(self.wait())
-
-            # Auto deal with the PLACE requirement
-            if action is None or action['requirement'] != 'PLACE':
-                break
-
-            n = action['min']
-            response = ' '.join(action['options'][:n])
-            self._write(response.encode() + b'\r\n')
-
-        self._sm = StateMachine.from_dict(action)
-        self._state = state
-
-        return terminated, state, action, score
+        return action

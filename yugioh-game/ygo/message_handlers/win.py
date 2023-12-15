@@ -14,7 +14,7 @@ def win(self, player, reason):
 		self.room.announce_draw()
 		self.end()
 		for p in self.players:
-			p.notify(dump_game_info(self, p, terminated=True, score=0))
+			p.notify(dump_game_info(self, p, recv=self.players.index(p), terminated=True, score=0))
 		return
 
 	if self.tag is True:
@@ -26,18 +26,20 @@ def win(self, player, reason):
 
 	l_reason = lambda p: p.strings['victory'][reason]
 
+	self.players[self.agent].notify(dump_game_info(
+		self, self.players[self.agent], recv=0, terminated=True, score=1 if player == 0 else -1
+	))
+
 	for w in winners:
 		if self.tag:
 			w.notify(w._("%s and you won (%s).")%(winners[1 - winners.index(w)].nickname, l_reason(w)))
 		else:
 			w.notify(w._("You won (%s).") % l_reason(w))
-			w.notify(dump_game_info(self, w, terminated=True, score=1))
 	for l in losers:
 		if self.tag is True:
 			l.notify(l._("%s and you lost (%s).")%(losers[1 - losers.index(l)].nickname, l_reason(l)))
 		else:
 			l.notify(l._("You lost (%s).") % l_reason(l))
-			l.notify(dump_game_info(self, l, terminated=True, score=-1))
 
 	for pl in self.watchers:
 		if pl.watching is True:

@@ -247,7 +247,6 @@ class Duel(Joinable):
 		while data:
 			msg = int(data[0])
 			fn = self.message_map.get(msg)
-			# breakpoint()
 			if fn:
 				data = fn(data)
 			else:

@@ -62,16 +62,18 @@ def idle_action(self, pl):
 			pl.notify(pl._("b: Enter the battle phase."))
 		if self.to_ep:
 			pl.notify(pl._("e: End phase."))
+
 		# Inject a JSON string to indicate which cards are usable
+		self.players[self.agent].notify(dump_game_info(
+			self, pl, recv=int(self.agent != self.tp), **{ 'actions': {
+				'requirement': 'IDLE',
+				'options': _list_idle_actions(self),
+				'targets': _list_available_cards(self, pl),
+			}}
+		))
 		pl.notify(DuelReader, r,
 			no_abort=pl._("Invalid specifier. Retry."),
-			prompt=pl._("Select a card: \n{}".format(dump_game_info(
-				self, pl, **{ 'actions': {
-					'requirement': 'IDLE',
-					'options': _list_idle_actions(self),
-					'targets': _list_available_cards(self, pl),
-				}}
-			))),
+			prompt=pl._("Select a card:"),
 			restore_parser=DuelParser
 		)
 	cards = []

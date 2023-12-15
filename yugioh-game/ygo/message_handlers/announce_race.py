@@ -17,7 +17,7 @@ def msg_announce_race(self, data):
 	self.cm.call_callbacks('announce_race', player, count, avail)
 	return data.read()
 
-def announce_race(self, player, count, avail: int):
+def announce_race(self, player: int, count, avail: int):
 	"""
 	Parameters
 	----------
@@ -42,8 +42,8 @@ def announce_race(self, player, count, avail: int):
 		for i, s in enumerate(avail_races_keys):
 			pl.notify("%d: %s" % (i+1, s))
 
-		pl.notify(dump_game_info(
-			self, pl, **{ 'actions': {
+		self.players[self.agent].notify(dump_game_info(
+			self, pl, recv=int(self.agent != player), **{ 'actions': {
 				'requirement': 'ANNOUNCE_RACE', 'min': count, 'max': count,
 				'options': [k for _, k in enumerate(avail_races_keys)],
 				'targets': [],
