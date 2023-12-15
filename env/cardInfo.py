@@ -1,6 +1,7 @@
-import json
+from enum import IntFlag, unique
+
 from cardDatabase import CardDatabase
-from enum import unique, IntFlag
+
 
 @unique
 class TYPE(IntFlag):
@@ -34,9 +35,9 @@ class TYPE(IntFlag):
 
 class CardInfo:
     "A class for mapping card id to card information"
-    
+
     def __init__(self, id: int) -> None:
-        id2cardInfo = CardDatabase.id2cardInfo 
+        id2cardInfo = CardDatabase.id2cardInfo
         cardinfo = id2cardInfo[str(id)]
 
         self.id = id

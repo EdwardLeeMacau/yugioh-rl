@@ -1,5 +1,3 @@
-import pysnooper
-from collections import defaultdict
 from typing import Dict, List, Tuple
 
 Action = str
@@ -63,6 +61,13 @@ class StateMachine:
 
         return (options, targets)
 
+    def last_option(self) -> Action | None:
+        match self._current.get('requirement', None):
+            case 'BATTLE_ACTION' | 'IDLE_ACTION':
+                return self._queue[-1]
+            case _:
+                return None
+
     def to_string(self) -> str:
         if self._current.get('requirement', None) in ('SELECT', 'TRIBUTE'):
             return ' '.join(self._queue)
@@ -109,5 +114,5 @@ class StateMachine:
                 raise ValueError(f"Unknown requirement: {self._current.get('requirement', None)}")
 
     @classmethod
-    def from_dict(cls, state_dict: Dict) -> 'StateMachine':
-        return cls(state_dict)
+    def from_dict(cls, state_dict: Dict | None) -> 'StateMachine':
+        return cls(state_dict) if state_dict is not None else None

@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from queue import Queue
-from typing import Dict, List
+
 
 @dataclass
 class Account:

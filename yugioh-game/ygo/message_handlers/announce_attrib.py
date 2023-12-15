@@ -3,7 +3,6 @@ import natsort
 from twisted.internet import reactor
 
 from ygo.constants import AMOUNT_ATTRIBUTES, ATTRIBUTES_OFFSET
-from ygo.dump import dump_game_info
 from ygo.duel_reader import DuelReader
 from ygo.parsers.duel_parser import DuelParser
 from ygo.utils import process_duel

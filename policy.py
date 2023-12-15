@@ -2,136 +2,38 @@
 #   Package   #
 ###############
 import random
-import gymnasium as gym
-import os
+from itertools import chain
+from typing import Dict, List, Set, Tuple
+
 import numpy as np
-import torch
-
-from typing import List
-from itertools import chain, combinations
 from sb3_contrib import MaskablePPO
-from typing import Dict, List, Tuple, Optional, Set
 
-# costumized package
-from env.game import GameState, Action, Policy
+# customized package
+from env.game import (CARDS2IDX, DECK, OPTIONS, POSSIBLE_ACTIONS, Action,
+                      GameState, Policy)
 
 ################
 #   Variable   #
 ################
+
 ckt_dict = {}
 
 #############
 #   Class   #
 #############
+
 class RandomPolicy(Policy):
     def react(self, state: GameState, actions: List[Action]) -> Action:
         return random.choice(actions)
 
 # the following class is the old version of the pseudo-self-play opponent
 class PseudoSelfPlayPolicy(Policy):
-    _RACES = [
-        "Warrior",
-        "Spellcaster",
-        "Fairy",
-        "Fiend",
-        "Zombie",
-        "Machine",
-        "Aqua",
-        "Pyro",
-        "Rock",
-        "Winged Beast",
-        "Plant",
-        "Insect",
-        "Thunder",
-        "Dragon",
-        "Beast",
-        "Beast-Warrior",
-        "Dinosaur",
-        "Fish",
-        "Sea Serpent",
-        "Reptile",
-        "Psychic",
-        "Divine-Beast",
-        "Creator God",
-        "Wyrm",
-        "Cyberse",
-    ]
-
-    # List of all cards in the YGO04 format.
-    # Use for assigning the cards into the one-hot encoding / multi-hot encoding.
-    #
-    # TODO: Accelerate index queries with hash map
-    _DECK_LIST = [
-        None,       # empty space
-        72989439,
-        77585513,
-        18036057,
-        63749102,
-        88240808,
-        33184167,
-        39507162,
-        71413901,
-        76922029,
-        74131780,
-        78706415,
-        79575620,
-        23205979,
-        8131171,
-        19613556,
-        32807846,
-        55144522,
-        42829885,
-        17375316,
-        4031928,
-        45986603,
-        69162969,
-        71044499,
-        72302403,
-        5318639,
-        70828912,
-        29401950,
-        53582587,
-        56120475,
-        60082869,
-        83555666,
-        97077563,
-        7572887,
-        74191942,
-        73915051,
-        44095762,
-        31560081,
-        73915052,   # Scapegoat (should map to the same encoding)
-        73915053,   # Scapegoat
-        73915054,   # Scapegoat
-        73915055,   # Scapegoat
-        0,          # hidden card
-    ]
-
-    # Enumerate actions
-    _ACTIONS = [
-        # *_DECK_LIST,
-        *_DECK_LIST,
-        *_RACES,    # Announce races
-        "e", # enter end phase
-        "z", # back
-        "s", # summon this card in face-up attack position
-        "m", # summon this card in face-down defense position/ enter main phase
-        "t", # set this card (Trap/Magic)
-        "v", # activate this card
-        "c", # cancel
-        "b", # enter battle phase
-        "y", # yes
-        "n", # no
-        "a", # attack
-        "r", # reposition
-        '1', # select option of Don Zaloog
-        '2',
-        '3', # FACEUP.DEFENSE
-        '4',
-    ]
+    # option (string) -> option (int)
+    OPTIONS2DIGITS = { option: i for i, option in enumerate(OPTIONS, 1) }
+    OPTIONS2DIGITS[None] = 0
 
     # action (string | CardID) -> action (int)
-    ACTION2DIGITS = { action: i for i, action in enumerate(_ACTIONS) }
+    ACTION2DIGITS = { action: i for i, action in enumerate(POSSIBLE_ACTIONS) }
 
     # action (int) -> action (string | CardID)
     DIGITS2ACTION = { value: key for key, value in ACTION2DIGITS.items() }
@@ -166,16 +68,17 @@ class PseudoSelfPlayPolicy(Policy):
 
         # Compose the action mask.
         # Mark as True if the action is valid.
-        mask = np.zeros(shape=(len(self._ACTIONS), ), dtype=np.int8)
+        mask = np.zeros(shape=(len(POSSIBLE_ACTIONS), ), dtype=np.int8)
         for opt in map(lambda x: self.ACTION2DIGITS[x], chain(options, cards.keys())):
             mask[opt] = 1
 
-        self._action_mask = mask
+        self._action_masks = mask
         self._state = {
 
             # --------------------------------- Games information ---------------------------------
 
             "phase": self.PHASE2DIGITS[game_state['phase']],
+            "turn": np.array([game_state['turn']], dtype=np.float32),
 
             # -------------------------------- Players information --------------------------------
 
@@ -187,7 +90,8 @@ class PseudoSelfPlayPolicy(Policy):
 
             # ------------------------------ Valid action information -----------------------------
 
-            "action_mask": self._action_mask.astype(np.float32),
+            "last_option": self.OPTIONS2DIGITS[game_state['last_option']],
+            "action_masks": self._action_masks.astype(np.float32),
 
             # ------------------------------- Opponents information -------------------------------
 
@@ -205,31 +109,32 @@ class PseudoSelfPlayPolicy(Policy):
             "t_oppo_s": self._IDStateList_to_vector(opponent['spell']).flatten(),
         }
 
-    @classmethod
-    def _IDStateList_to_vector(cls, id_state_list: List[Tuple[int, int]]) -> np.ndarray:
+    @staticmethod
+    def _IDStateList_to_vector(id_state_list: List[Tuple[int, int]]) -> np.ndarray:
         assert len(id_state_list) == 5, "The card list is padded to 5 with empty card (None)"
 
-        frame_array = np.zeros(shape=(5, 45), dtype=np.float32)
-        # frame_array[:, 0] = cls._DECK_LIST.index(None)
-        # frame_array[:, 1] = 4
+        frame_array = np.zeros(shape=(5, len(DECK) + 2), dtype=np.float32)
+        for i, id_state in enumerate(id_state_list):
+            card_id, pos = id_state[0], id_state[1]
 
-        # One-hot encoding for the card ID.
-        for i in range(len(id_state_list)):
-            frame_array[i, cls._DECK_LIST.index(id_state_list[i][0])] = 1
-            # frame_array[i, 1] = id_state_list[i][1]
+            # One-hot encoding for the card ID.
+            frame_array[i, CARDS2IDX[card_id]] = 1
+
+            # One-hot encoding for the position (UP/DOWN, ATK/DEF).
+            frame_array[i, len(DECK):] = [pos & 0b101, pos & 0b011]
 
         return frame_array
 
     @classmethod
     def _IDList_to_MultiHot(cls, id_list: List[int]) -> np.ndarray:
-        multi_hot = np.zeros(shape=(40, ), dtype=np.float32)
+        multi_hot = np.zeros(shape=(len(DECK), ), dtype=np.float32)
 
         for card_id in id_list:
-            multi_hot[cls._DECK_LIST.index(card_id)] += 1
+            multi_hot[CARDS2IDX[card_id]] += 1
 
         return multi_hot
 
-    def _decode_action(self, action: int) -> str:
+    def decode_action(self, action: int) -> str:
         # Decode the action as server's format first.
         # If the action is related to a card (int), then further decode it as a position code.
         action: str | int = self.DIGITS2ACTION[action]
@@ -243,10 +148,10 @@ class PseudoSelfPlayPolicy(Policy):
         model = MaskablePPO.load(self._model_path)
         self._encode_state(state, actions)
         action, _state = model.predict(self._state, action_masks=self._action_mask, deterministic=True)
-        action = self._decode_action(action.item())
+        action = self.decode_action(action.item())
         del model
         """
         self._encode_state(state, actions)
-        action, _state = ckt_dict['0'].predict(self._state, action_masks=self._action_mask, deterministic=True)
-        action = self._decode_action(action.item())
+        action, _state = ckt_dict['0'].predict(self._state, action_masks=self._action_masks, deterministic=True)
+        action = self.decode_action(action.item())
         return action

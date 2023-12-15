@@ -33,7 +33,11 @@ class MultiFeaturesExtractor(BaseFeaturesExtractor):
         # ! Use obs.nvec.sum() if obs is a MultiDiscrete space
         self.LP_FE            = MLP(2 * observation_space['agent_LP'].shape[0],
                                     feature_dim, feature_dim // 2)
-        self.action_mask_FE   = MLP(observation_space['action_mask'].shape[0],
+        self.turn_FE          = MLP(observation_space['turn'].n,
+                                    feature_dim, feature_dim // 2)
+        self.last_option_FE   = MLP(observation_space['last_option'].n,
+                                    feature_dim, feature_dim // 2)
+        self.action_masks_FE  = MLP(observation_space['action_masks'].shape[0],
                                     feature_dim, feature_dim // 2)
         self.phase_FE         = MLP(observation_space['phase'].n,
                                     feature_dim, feature_dim // 2)
@@ -64,7 +68,10 @@ class MultiFeaturesExtractor(BaseFeaturesExtractor):
 
     def forward(self, observations) -> Tensor:
         single_int_input = torch.cat([observations['agent_LP'], observations['oppo_LP']], dim=-1)
+        single_int_input = self.LP_FE(single_int_input)
 
+        embedded_turn = self.turn_FE(observations['turn'])
+        embedded_last_option = self.last_option_FE(observations['last_option'].squeeze())
         embedded_agent_hand = self.agent_hand_FE(observations['agent_hand'])
         embedded_agent_grave = self.agent_grave_FE(observations['agent_grave'])
         embedded_agent_removed = self.agent_removed_FE(observations['agent_removed'])
@@ -76,11 +83,27 @@ class MultiFeaturesExtractor(BaseFeaturesExtractor):
         embedded_agent_s = self.post_agent_s_FE(observations['t_agent_s'])
         embedded_oppo_s = self.post_oppo_s_FE(observations['t_oppo_s'])
 
-        # embedded_phase = self.phase_FE(observations['phase'])
+        # Squeeze to avoid [bs, 1, dim] shape
+        embedded_phase = self.phase_FE(observations['phase'].squeeze())
         embedded_agent_deck = self.agent_deck_FE(observations['agent_deck'])
         embedded_oppo_deck = self.oppo_deck_FE(observations['oppo_deck'])
         embedded_oppo_hand = self.oppo_hand_FE(observations['oppo_hand'])
 
-        FE_output = embedded_agent_hand + embedded_agent_grave + embedded_agent_removed + embedded_oppo_grave + embedded_oppo_removed + embedded_agent_m + embedded_agent_s + embedded_oppo_m + embedded_oppo_s + embedded_agent_deck + embedded_oppo_deck + embedded_oppo_hand
+        FE_output = (single_int_input
+                     + embedded_turn
+                     + embedded_last_option
+                     + embedded_agent_hand
+                     + embedded_agent_grave
+                     + embedded_agent_removed
+                     + embedded_oppo_grave
+                     + embedded_oppo_removed
+                     + embedded_agent_m
+                     + embedded_agent_s
+                     + embedded_oppo_m
+                     + embedded_oppo_s
+                     + embedded_phase
+                     + embedded_agent_deck
+                     + embedded_oppo_deck
+                     + embedded_oppo_hand)
 
         return FE_output

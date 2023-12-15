@@ -29,6 +29,7 @@ def _dump_state(duel: Duel, player: Player) -> Dict:
     index: int = player.duel_player
     return {
         'phase': duel.current_phase,
+        'turn': duel.players[duel.tp] == player,
         'player': {
             'lp': duel.lp[index],
             'deck': len(duel.get_cards_in_location(index, LOCATION.DECK)),
