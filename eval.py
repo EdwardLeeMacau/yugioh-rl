@@ -1,22 +1,20 @@
 import copy
 import warnings
 from itertools import chain
-from tqdm import tqdm
+from queue import Queue
 from typing import Dict, List, Tuple
 
-from queue import Queue
-from joblib import Parallel, delayed
-
 import gymnasium as gym
+import pandas as pd
 from gymnasium.envs.registration import register
-
-from stable_baselines3 import A2C, DDPG, DQN, PPO, SAC, TD3
+from joblib import Parallel, delayed
 from sb3_contrib import MaskablePPO
 from sb3_contrib.common.maskable.utils import get_action_masks
+from tqdm import tqdm
 
+from env.game import Action, GameState
+from env.single_gym_env import GameInfo, YGOEnv
 from env_config import ENV_CONFIG
-from env.single_gym_env import YGOEnv, GameInfo
-from env.game import GameState, Action
 
 warnings.filterwarnings("ignore")
 register(
@@ -33,7 +31,7 @@ def play_game(env: YGOEnv, model: MaskablePPO) -> Trajectory:
     trajectories = []
 
     obs, info = env.reset()
-    trajectories.append((obs, None, None, None, info))
+    trajectories.append((None, None, info))
 
     while not done:
         mask = get_action_masks(env)
@@ -43,17 +41,7 @@ def play_game(env: YGOEnv, model: MaskablePPO) -> Trajectory:
         decoded_action = env.decode_action(action)
         obs, reward, done, _, info = env.step(action)
 
-        trajectories.append((obs, action, decoded_action, reward, info))
-
-    # Unwrap env to access the raw state
-    # * env.player._state to access observation
-    # * env.player._sm._current to access valid actions
-    env = env.unwrapped
-    lp = env.player._state['player']['lp'], env.player._state['opponent']['lp']
-    deck = env.player._state['player']['deck'], env.player._state['opponent']['deck']
-
-    if all(map(lambda x: x > 0, chain(lp, deck))):
-        raise ValueError(f"Game is terminated unexpectedly. recv: {env.player._state}")
+        trajectories.append((decoded_action, reward, info))
 
     return trajectories
 
@@ -108,11 +96,25 @@ def calc_avg_step(trajectories: List[Trajectory]):
         total_step += len(trajectory)
     return total_step / len(trajectories)
 
-def evaluate(trajectories: List[Trajectory]) -> Dict:
-    return {
-        "winning_rate": calc_winning_rate(trajectories),
-        "avg_step": calc_avg_step(trajectories),
-    }
+def calc_remaining_LP(trajectories: List[Trajectory]):
+    total_remaining_LP = 0
+    for trajectory in trajectories:
+        obs, action, decoded_action, reward, info = trajectory[-1]
+        total_remaining_LP += info['remaining_LP']
+    return total_remaining_LP / len(trajectories)
+
+def evaluate(trajectories: List[Trajectory]) -> pd.DataFrame:
+    steps = list(map(lambda x: len(x), trajectories))
+
+    last = list(map(lambda x: x[-1][-1], trajectories))
+    scores = list(map(lambda x: x['score'], last))
+    remain = list(map(lambda x: x['state']['player']['lp'], last))
+
+    return pd.DataFrame({
+        "steps": steps,
+        "scores": scores,
+        "remain_lp": remain,
+    })
 
 def main():
     # config
@@ -122,10 +124,10 @@ def main():
     env = gym.make('single_ygo')
     model = MaskablePPO.load(model_path)
 
-    game_trajectories = play_game_multiple_times(num_game, env, model)
+    trajectories = play_game_multiple_times(num_game, env, model)
 
-    winning_rate = calc_winning_rate(game_trajectories)
-    avg_step = calc_avg_step(game_trajectories)
+    winning_rate = calc_winning_rate(trajectories)
+    avg_step = calc_avg_step(trajectories)
 
     print(f"winning_rate: {winning_rate}")
     print(f"avg_step: {avg_step}")

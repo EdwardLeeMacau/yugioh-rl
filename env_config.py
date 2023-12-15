@@ -9,9 +9,9 @@ ENV_CONFIG = {
     },
 
     # Remove reward shaping, only use win/loss reward
-    # 'reward_kwargs': {
-    #     'type': 'win/loss',
-    # },
+    'reward_kwargs': {
+        'type': 'win/loss',
+    },
 
     # Experiment range: [0.05, 0.1, 0.2]
     # 'reward_kwargs': {
@@ -26,9 +26,9 @@ ENV_CONFIG = {
     # },
 
     # Experiment range: ?
-    'reward_kwargs': {
-        'type': 'LP_exp_step',
-        'temperature': 0.1,
-        'weight': 0.1
-    },
+    # 'reward_kwargs': {
+    #     'type': 'LP_exp_step',
+    #     'temperature': 0.1,
+    #     'weight': 0.1
+    # },
 }

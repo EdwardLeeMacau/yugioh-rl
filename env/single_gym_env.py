@@ -289,20 +289,18 @@ class YGOEnv(gym.Env):
             return self._state, self._illegal_move_reward, False, False, self._info
 
         # Otherwise, interact with the environment.
-        reward = 0.
         action = self.decode_action(action)
-        terminated, next_state_dict, concrete_action, score = self.player.step(action)
-        next_state_dict['last_option'] = self.player.last_option()
-        self._info['steps'] += 1
+        terminated, next_state, _, score = self.player.step(action)
+        next_state['last_option'] = self.player.last_option()
+
+        # Maintain reward function
+        reward = 0.
 
         # * Win/Lose reward
-        # info['score'] stores the result of the game.
-        # 1 for win, -1 for lose, 0 for draw, None for not terminated.
         reward += score if score is not None else 0.
-        self._info['score'] = score
 
-        # * reward shaping
-        LP_diff = (next_state_dict['player']['lp'] - next_state_dict['opponent']['lp']) / 16000.
+        # * Reward shaping
+        LP_diff = (next_state['player']['lp'] - next_state['opponent']['lp']) / 16000.
         match self._reward_kwargs['type']:
             case 'win/loss':
                 pass
@@ -314,7 +312,12 @@ class YGOEnv(gym.Env):
                 reward += (LP_diff * self._reward_kwargs['weight']) / np.exp(self._info['steps'] / self._reward_kwargs['temperature'])
 
         valid_actions = self.player.list_valid_actions()
-        self._encode_state(next_state_dict, valid_actions)
+        self._encode_state(next_state, valid_actions)
+
+        # Copy player states for evaluation.
+        self._info['steps'] += 1
+        self._info['state'] = next_state
+        self._info['score'] = score
 
         return self._state, reward, terminated, False, self._info
 
@@ -353,7 +356,6 @@ class YGOEnv(gym.Env):
 
         # Re-create the game instance.
         self._game.start()
-        self._info = { 'steps': 0, 'score': 0.0 }
 
         # Launch a new thread for the opponent's decision making.
         torch.multiprocessing.set_start_method('spawn', force=True)
@@ -368,6 +370,8 @@ class YGOEnv(gym.Env):
 
         # Encode the game state into the tensor.
         self._encode_state(state, self.player.list_valid_actions())
+
+        self._info = { 'steps': 0, 'score': 0.0, 'state': state }
 
         return self._state, self._info
 

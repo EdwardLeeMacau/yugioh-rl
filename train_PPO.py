@@ -32,12 +32,12 @@ CONFIG = {
     "save_path": "models",
 
     "epoch_num": 100,
-    "timesteps_per_epoch": 102400,
-    "n_steps": 128,
+    "timesteps_per_epoch": 32768,
+    "n_steps": 256,
     "clip_range": 0.2,
-    "batch_size": 2048,
-    "parallel": 32,
-    "eval_episode_num": 100,
+    "batch_size": 512,
+    "parallel": 4,
+    "eval_episode_num": 128,
     "learning_rate": 0.0003,
     "gamma": 0.99,
 }
@@ -47,29 +47,30 @@ def make_env():
     return env
 
 def train(model, config, eval_env):
-    for epoch in range(config["epoch_num"]):
-        ### Train agent using SB3
-        model.learn(
-            total_timesteps=config["timesteps_per_epoch"],
-            reset_num_timesteps=False,
-            progress_bar=True,
-            log_interval=1,
-        )
+    savedir = os.path.join(config['save_path'], config['run_id'])
+    with open(os.path.join(savedir, f"metrics.json"), 'w') as f:
+        for epoch in range(config["epoch_num"]):
+            ### Train agent using SB3
+            model.learn(
+                total_timesteps=config["timesteps_per_epoch"],
+                reset_num_timesteps=False,
+                progress_bar=True,
+                log_interval=1,
+            )
 
-        ### Evaluation
-        print(config["run_id"])
-        print("Epoch: ", epoch)
+            ### Evaluation time and save the model with higher winning rate
+            trajectories = play_game_multiple_times(config['eval_episode_num'], eval_env, model)
+            metrics = evaluate(trajectories)
 
-        ### Evaluation time and save the model with higher winning rate
-        trajectories = play_game_multiple_times(config['eval_episode_num'], eval_env, model)
-        metrics = evaluate(trajectories)
-        model.logger.record("eval/winning_rate", metrics["winning_rate"])
-        model.logger.record("eval/avg_step", metrics["avg_step"])
-        print(f"Winning rate: {metrics['winning_rate']:.2%}")
-        print(f"Average step: {metrics['avg_step']:.2%}")
+            ### Evaluation
+            print(f'{config["run_id"]}. Epoch: {epoch}')
+            print(metrics.describe())
 
-        model.save(os.path.join(config['save_path'], CONFIG['run_id'], str(epoch)))
-        print("---------------")
+            f.write(metrics.mean().to_json() + '\n')
+            f.flush()
+
+            # Always save the model
+            model.save(os.path.join(savedir, str(epoch)))
 
 
 if __name__ == "__main__":
