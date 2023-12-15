@@ -150,9 +150,10 @@ class PseudoSelfPlayPolicy(Policy):
     def react(
             self,
             state: GameState,
-            actions: Tuple[List[Action], Dict[Action, Set[str]]]
+            options: List[Action],
+            targets: Dict[Action, Set[str]]
         ) -> Action:
-        self._encode_state(state, actions)
+        self._encode_state(state, (options, targets))
         action, _state = ckt_dict['0'].predict(self._state, action_masks=self._action_masks, deterministic=True)
         action = self.decode_action(action.item())
         return action

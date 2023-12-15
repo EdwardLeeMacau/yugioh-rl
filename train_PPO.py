@@ -7,7 +7,7 @@ from datetime import datetime
 from gymnasium.envs.registration import register
 
 from sb3_contrib import MaskablePPO
-from stable_baselines3.common.vec_env import DummyVecEnv
+from stable_baselines3.common.vec_env import DummyVecEnv, SubprocVecEnv
 
 from model import MultiFeaturesExtractor
 from env_config import ENV_CONFIG

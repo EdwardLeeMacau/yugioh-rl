@@ -1,8 +1,8 @@
 from policy import RandomPolicy, PseudoSelfPlayPolicy
 
 ENV_CONFIG = {
-    "opponent_policy": RandomPolicy(),
-    # "opponent": PseudoSelfPlayPolicy(model_path='models/0.zip'),
+    # "opponent_policy": RandomPolicy(),
+    "opponent_policy": PseudoSelfPlayPolicy(model_path='models/0.zip'),
     'advantages': {
         'player1': { 'lifepoints': 8000 },
         'player2': { 'lifepoints': 8000 }

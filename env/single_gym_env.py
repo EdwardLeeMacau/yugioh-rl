@@ -267,7 +267,7 @@ class YGOEnv(gym.Env):
                 n = action['min']
                 response = ' '.join(action['options'][:n])
                 receiver._write(response.encode() + b'\r\n')
-                embed = self.player.wait()
+                embed = player.wait()
 
             if receiver is player:
                 break
