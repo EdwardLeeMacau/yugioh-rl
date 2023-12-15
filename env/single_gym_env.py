@@ -299,6 +299,7 @@ class YGOEnv(gym.Env):
         # info['score'] stores the result of the game.
         # 1 for win, -1 for lose, 0 for draw, None for not terminated.
         reward += score if score is not None else 0.
+        self._info['score'] = score
 
         # * reward shaping
         LP_diff = (next_state_dict['player']['lp'] - next_state_dict['opponent']['lp']) / 16000.

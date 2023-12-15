@@ -25,7 +25,7 @@ register(
     kwargs=ENV_CONFIG
 )
 
-# observation, action, decoded action, reward, game info, 
+# observation, action, decoded action, reward, game info,
 Trajectory = Tuple[GameState, Action, str, float, GameInfo]
 
 def play_game(env: YGOEnv, model: MaskablePPO) -> Trajectory:
@@ -107,7 +107,7 @@ def calc_avg_step(trajectories: List[Trajectory]):
     for trajectory in trajectories:
         total_step += len(trajectory)
     return total_step / len(trajectories)
-    
+
 def evaluate(trajectories: List[Trajectory]) -> Dict:
     return {
         "winning_rate": calc_winning_rate(trajectories),

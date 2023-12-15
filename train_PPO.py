@@ -35,7 +35,7 @@ CONFIG = {
     "timesteps_per_epoch": 102400,
     "n_steps": 128,
     "clip_range": 0.2,
-    "batch_size": 512,
+    "batch_size": 2048,
     "parallel": 32,
     "eval_episode_num": 100,
     "learning_rate": 0.0003,
