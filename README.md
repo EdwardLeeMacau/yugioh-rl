@@ -17,6 +17,16 @@ The game is based on YGO04 environment with these revision:
   - 42829885 (The Forceful Sentry) => 71413901 (Breaker the Magical Warrior)
   - 17375316 (Confiscation) => 69162969 (Lightning Vortex)
 
+## Run Experiments in Parallel
+
+Modify `env/account.py` before running the training script.
+
+For example
+- Parallel training in 32 games (see argument `parallel` in `env_config.py`), needs 32 games * 2 = 64 accounts
+- Evaluate with 32 environments (see argument `num_resources` in `eval.play_game_multiple_times()`), needs 32 games * 2 = 64 accounts
+
+Total 128 accounts are allocated by single training script.
+
 ## Setup
 
 1. Prepare `game.db`
@@ -48,7 +58,7 @@ The game is based on YGO04 environment with these revision:
     docker run --rm -p 4000:4000/tcp -it \
         -v $(pwd)/ygo:/usr/src/app/ygo \
         -v $(pwd)/ygo.py:/usr/src/app/ygo.py \
-        --name yugioh
+        --name yugioh \
         yugioh \
         /bin/bash
 

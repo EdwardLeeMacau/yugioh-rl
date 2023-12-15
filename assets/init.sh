@@ -2,7 +2,7 @@
 
 # Parameters:
 # number of accounts to create
-n=8
+n=1024
 
 # Replace game.db with the .game.db.backup
 cp .game.db.backup game.db
@@ -72,7 +72,7 @@ now=$(sqlite3 game.db "SELECT datetime();")
 contents=$(jq -c . < deck.json)
 
 #  player0: use for checking server health
-for i in $(seq 0 256);
+for i in $(seq 0 $n);
 do
     player=Player$i
     passwd=$(python3 sha256.py -p player$i)
