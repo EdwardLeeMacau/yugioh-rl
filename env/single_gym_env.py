@@ -130,6 +130,7 @@ class YGOEnv(gym.Env):
     # Field for caching the state of the game.
 
     _action_masks: np.ndarray | Tensor
+    _reward_kwargs: Dict[str, Any]
     _spec_map: Dict[str, int]
     _spec_unmap: Dict[int, str]
     _state: Dict[str, Tensor]
@@ -141,7 +142,12 @@ class YGOEnv(gym.Env):
         'player2': { 'lifepoints': 8000 },
     }
 
-    def __init__(self, reward_type: str = "", opponent: Policy = None, advantages: Dict = DEFAULT_ADVANTAGES):
+    def __init__(
+            self,
+            reward_kwargs: Dict = { 'type': 'win/loss', 'factor': 1 },
+            opponent: Policy = None,
+            advantages: Dict = DEFAULT_ADVANTAGES,
+        ):
         super(YGOEnv, self).__init__()
         # define the Game and the opponent object
         self._game = None
@@ -150,16 +156,11 @@ class YGOEnv(gym.Env):
         self._advantages = advantages
         self._state = None
 
-        # `reward_type` should be "win/loss reward", "LP reward", or "step count reward"
-        match reward_type:
-            case "win/loss":
-                self._reward_type = 0
-            case "LP":
-                self._reward_type = 1
-            case "step count reward":
-                self._reward_type = -1
-            case _:
-                raise ValueError(f"Invalid reward type: {reward_type}")
+        # `reward_type` should be "win/loss reward", "LP", "LP_linear_step", or "LP_exp_step".
+        if reward_kwargs['type'] not in ["win/loss", "LP", "LP_linear_step", "LP_exp_step"]:
+            raise ValueError(f"Invalid reward type: {reward_kwargs}")
+
+        self._reward_kwargs = reward_kwargs
 
         # Set negative reward (penalty) for illegal moves (optional)
         self.set_illegal_move_reward(-0.2)
@@ -279,9 +280,6 @@ class YGOEnv(gym.Env):
 
         return multi_hot
 
-    def _reward_shaping(self, state: GameState) -> float:
-        return (state['player']['lp'] - state['opponent']['lp']) / (16000. * self._info['steps'] ** (self._reward_type < 0 ))
-
     def seed(self, seed=None) -> None:
         self.np_random, seed = seeding.np_random(seed)
         return [seed]
@@ -299,12 +297,23 @@ class YGOEnv(gym.Env):
         self._info['steps'] += 1
 
         # * Win/Lose reward
-        outcome = next_state_dict.get('score', .0)
-        self._info['outcome'] = outcome
-        reward += outcome
+        # info['score'] stores the result of the game.
+        # 1 for win, -1 for lose, 0 for draw, None for not terminated.
+        score = next_state_dict.get('score', None)
+        self._info['score'] = score
+        reward += score if score is not None else 0.
 
         # * reward shaping
-        reward += self._reward_shaping(next_state_dict) * np.abs(self._reward_type)
+        LP_diff = (next_state_dict['player']['lp'] - next_state_dict['opponent']['lp']) / 16000.
+        match self._reward_kwargs['type']:
+            case 'win/loss':
+                pass
+            case 'LP':
+                reward += LP_diff * self._reward_kwargs['weight']
+            case 'LP_linear_step':
+                reward += (LP_diff * self._reward_kwargs['weight']) / self._info['steps']
+            case 'LP_exp_step':
+                reward += (LP_diff * self._reward_kwargs['weight']) / np.exp(self._info['steps'] / self._reward_kwargs['temperature'])
 
         valid_actions = self.player.list_valid_actions()
         self._encode_state(next_state_dict, valid_actions)
