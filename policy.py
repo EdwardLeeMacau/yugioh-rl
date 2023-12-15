@@ -72,7 +72,7 @@ class PseudoSelfPlayPolicy(Policy):
         for opt in map(lambda x: self.ACTION2DIGITS[x], chain(options, cards.keys())):
             mask[opt] = 1
 
-        self._action_mask = mask
+        self._action_masks = mask
         self._state = {
 
             # --------------------------------- Games information ---------------------------------
@@ -109,8 +109,8 @@ class PseudoSelfPlayPolicy(Policy):
             "t_oppo_s": self._IDStateList_to_vector(opponent['spell']).flatten(),
         }
 
-    @classmethod
-    def _IDStateList_to_vector(cls, id_state_list: List[Tuple[int, int]]) -> np.ndarray:
+    @staticmethod
+    def _IDStateList_to_vector(id_state_list: List[Tuple[int, int]]) -> np.ndarray:
         assert len(id_state_list) == 5, "The card list is padded to 5 with empty card (None)"
 
         frame_array = np.zeros(shape=(5, len(DECK) + 2), dtype=np.float32)
@@ -127,10 +127,10 @@ class PseudoSelfPlayPolicy(Policy):
 
     @classmethod
     def _IDList_to_MultiHot(cls, id_list: List[int]) -> np.ndarray:
-        multi_hot = np.zeros(shape=(40, ), dtype=np.float32)
+        multi_hot = np.zeros(shape=(len(DECK), ), dtype=np.float32)
 
         for card_id in id_list:
-            multi_hot[cls._DECK_LIST.index(card_id)] += 1
+            multi_hot[CARDS2IDX[card_id]] += 1
 
         return multi_hot
 
@@ -152,6 +152,6 @@ class PseudoSelfPlayPolicy(Policy):
         del model
         """
         self._encode_state(state, actions)
-        action, _state = ckt_dict['0'].predict(self._state, action_masks=self._action_mask, deterministic=True)
+        action, _state = ckt_dict['0'].predict(self._state, action_masks=self._action_masks, deterministic=True)
         action = self.decode_action(action.item())
         return action

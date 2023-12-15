@@ -34,6 +34,8 @@ CONFIG = {
     "epoch_num": 100,
     "timesteps_per_epoch": 102400,
     "n_steps": 128,
+    "clip_range": 0.2,
+    "batch_size": 512,
     "parallel": 32,
     "eval_episode_num": 100,
     "learning_rate": 0.0003,
@@ -45,12 +47,6 @@ def make_env():
     return env
 
 def train(model, config, eval_env):
-    current_best_ = 0
-    current_best = 0
-    outcome_list = []
-
-    max_winning_rate = 0.0
-
     for epoch in range(config["epoch_num"]):
         ### Train agent using SB3
         model.learn(
@@ -67,13 +63,11 @@ def train(model, config, eval_env):
         ### Evaluation time and save the model with higher winning rate
         trajectories = play_game_multiple_times(config['eval_episode_num'], eval_env, model)
         metrics = evaluate(trajectories)
+        model.logger.record("eval/winning_rate", metrics["winning_rate"])
         print(f"Winning rate: {metrics['winning_rate']:.2%}")
 
         model.save(os.path.join(config['save_path'], CONFIG['run_id'], str(epoch)))
         print("---------------")
-
-    # Workaround for terminating the background threads
-    ...
 
 
 if __name__ == "__main__":
@@ -85,6 +79,8 @@ if __name__ == "__main__":
         learning_rate=CONFIG["learning_rate"],
         gamma=CONFIG["gamma"],
         n_steps=CONFIG["n_steps"],
+        clip_range=CONFIG['clip_range'],
+        batch_size=CONFIG['batch_size'],
         tensorboard_log=os.path.join("logs", CONFIG["run_id"]),
         policy_kwargs={
             "features_extractor_class": MultiFeaturesExtractor,
@@ -102,3 +98,5 @@ if __name__ == "__main__":
         json.dump(CONFIG, f, indent=4)
 
     train(model, CONFIG, eval_env)
+    train_env.close()
+    eval_env.close()

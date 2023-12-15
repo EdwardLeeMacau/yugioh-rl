@@ -36,6 +36,7 @@ def game_loop(player: Player, policy: Policy) -> None:
     terminated, state, action = player.decode_server_msg(player.wait())
     player._sm = StateMachine.from_dict(action)
     player._state = state
+    state['last_option'] = player.last_option()
 
     while not terminated:
         options, targets = player.list_valid_actions()
@@ -44,6 +45,7 @@ def game_loop(player: Player, policy: Policy) -> None:
         else:
             action = policy.react(state, (options, targets))
         terminated, state, _ = player.step(action)
+        state['last_option'] = player.last_option()
 
     return
 
@@ -252,8 +254,8 @@ class YGOEnv(gym.Env):
             "t_oppo_s": self._IDStateList_to_vector(opponent['spell']).flatten(),
         }
 
-    @classmethod
-    def _IDStateList_to_vector(cls, id_state_list: List[Tuple[int, int]]) -> np.ndarray:
+    @staticmethod
+    def _IDStateList_to_vector(id_state_list: List[Tuple[int, int]]) -> np.ndarray:
         assert len(id_state_list) == 5, "The card list is padded to 5 with empty card (None)"
 
         frame_array = np.zeros(shape=(5, len(DECK) + 2), dtype=np.float32)
@@ -268,8 +270,8 @@ class YGOEnv(gym.Env):
 
         return frame_array
 
-    @classmethod
-    def _IDList_to_MultiHot(cls, id_list: List[int]) -> np.ndarray:
+    @staticmethod
+    def _IDList_to_MultiHot(id_list: List[int]) -> np.ndarray:
         multi_hot = np.zeros(shape=(len(DECK), ), dtype=np.float32)
 
         for card_id in id_list:
