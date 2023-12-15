@@ -51,7 +51,7 @@ def play_game_for_multi_process(resource_queue: Queue) -> Trajectory:
     resource_queue.put((env, model))
     return trajectories
 
-def play_game_multiple_times(num_game: int, env: YGOEnv, model, multi_process=True, num_resource=32, nums_worker=16) -> List[Trajectory]:
+def play_game_multiple_times(num_game: int, env: YGOEnv, model, multi_process=False, num_resource=32, nums_worker=16) -> List[Trajectory]:
     if multi_process:
         # multi-process
         resource_queue = Queue()
