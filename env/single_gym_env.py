@@ -8,7 +8,6 @@ from typing import Any, Dict, List, Set, Tuple
 
 import gymnasium as gym
 import numpy as np
-import torch
 from gymnasium import spaces
 from gymnasium.utils import seeding
 from torch import Tensor
@@ -18,7 +17,7 @@ from torch.multiprocessing import Process as Process
 sys.path.insert(0, os.path.abspath(os.getcwd()))
 
 from .game import (CARDS2IDX, DECK, OPTIONS, POSSIBLE_ACTIONS, Action, Game,
-                      GameState, Player, Policy)
+                   GameState, Player, Policy)
 from .state import StateMachine
 
 #######################
@@ -27,27 +26,6 @@ from .state import StateMachine
 
 GameInfo = Dict[str, Any]
 CardID = int
-
-################
-#   Function   #
-################
-
-def game_loop(player: Player, policy: Policy) -> None:
-    terminated, state, action, reward = player.decode_server_msg(player.wait())
-    player._sm = StateMachine.from_dict(action)
-    player._state = state
-    state['last_option'] = player.last_option()
-
-    while not terminated:
-        options, targets = player.list_valid_actions()
-        if type(policy).__name__ == "RandomPolicy":
-            action = policy.react(state, options + list(targets.values()))
-        else:
-            action = policy.react(state, (options, targets))
-        terminated, state, _, reward = player.step(action)
-        state['last_option'] = player.last_option()
-
-    return
 
 #############
 #   Class   #
@@ -124,8 +102,7 @@ class YGOEnv(gym.Env):
     # Type hinting for private fields.
 
     _game: Game
-    _opponent: Policy
-    _process: Process
+    _opponent_policy: Policy
 
     # Field for caching the state of the game.
 
@@ -145,15 +122,13 @@ class YGOEnv(gym.Env):
     def __init__(
             self,
             reward_kwargs: Dict = { 'type': 'win/loss', 'factor': 1 },
-            opponent: Policy = None,
+            opponent_policy: Policy = None,
             advantages: Dict = DEFAULT_ADVANTAGES,
         ):
         super(YGOEnv, self).__init__()
         # define the Game and the opponent object
-        self._game = None
-        self._opponent = opponent
-        self._process = None
-        self._advantages = advantages
+        self._game = Game(advantages)
+        self._opponent_policy = opponent_policy
         self._state = None
 
         if reward_kwargs['type'] not in ["win/loss", "LP", "LP_linear_step", "LP_exp_step"]:
@@ -161,23 +136,13 @@ class YGOEnv(gym.Env):
 
         self._reward_kwargs = reward_kwargs
 
-        # Set negative reward (penalty) for illegal moves (optional)
-        self.set_illegal_move_reward(-0.2)
-
         # ! DO NOT call reset() here.
         #   Otherwise the connection will NOT be closed and lead to infinite waiting.
         # self.reset()
 
     @property
     def player(self) -> Player:
-        return self._game._player1
-
-    def action_masks(self) -> np.ndarray:
-        """ Return True if the action is valid. """
-        return self._action_masks
-
-    def set_illegal_move_reward(self, penalty: float=0) -> None:
-        self._illegal_move_reward = penalty
+        return self._game._players[0]
 
     def decode_action(self, action: int) -> str:
         # Decode the action as server's format first.
@@ -186,6 +151,10 @@ class YGOEnv(gym.Env):
         if self._spec_unmap.get(action, None) is not None:
             action = self._spec_unmap[action]
         return action
+
+    # --------------------------------------------------------------------------
+    # Private functions
+    # --------------------------------------------------------------------------
 
     def _encode_state(
             self,
@@ -220,46 +189,46 @@ class YGOEnv(gym.Env):
         self._action_masks = mask
         self._state = {
 
-            # --------------------------------- Games information ---------------------------------
+            # Games information
 
             "phase": self.PHASE2DIGITS[game_state['phase']],
             "turn": np.array([game_state['turn']], dtype=np.float32),
 
-            # -------------------------------- Players information --------------------------------
+            # Players information
 
             "agent_LP": np.array([player['lp']]) / 8000.,
-            "agent_hand": self._IDList_to_MultiHot(player['hand']),
+            "agent_hand": self._card_to_vec(player['hand']),
             "agent_deck": np.array([player['deck']]) / 40.,
-            "agent_grave": self._IDList_to_MultiHot(player['grave']),
-            "agent_removed": self._IDList_to_MultiHot(player['removed']),
+            "agent_grave": self._card_to_vec(player['grave']),
+            "agent_removed": self._card_to_vec(player['removed']),
 
-            # ------------------------------ Valid action information -----------------------------
+            # Valid action information
 
             "last_option": self.OPTIONS2DIGITS[game_state['last_option']],
             "action_masks": self._action_masks.astype(np.float32),
 
-            # ------------------------------- Opponents information -------------------------------
+            # Opponents information
 
             "oppo_LP": np.array([opponent['lp']]) / 8000.,
             "oppo_hand": np.array([opponent['hand']]) / 40.,
             "oppo_deck": np.array([opponent['deck']]) / 40.,
-            "oppo_grave": self._IDList_to_MultiHot(opponent['grave']),
-            "oppo_removed": self._IDList_to_MultiHot(opponent['removed']),
+            "oppo_grave": self._card_to_vec(opponent['grave']),
+            "oppo_removed": self._card_to_vec(opponent['removed']),
 
-            # --------------------------------- Table information ---------------------------------
+            # Table information
 
-            "t_agent_m": self._IDStateList_to_vector(player['monster']).flatten(),
-            "t_agent_s": self._IDStateList_to_vector(player['spell']).flatten(),
-            "t_oppo_m": self._IDStateList_to_vector(opponent['monster']).flatten(),
-            "t_oppo_s": self._IDStateList_to_vector(opponent['spell']).flatten(),
+            "t_agent_m": self._card_state_to_vec(player['monster']).flatten(),
+            "t_agent_s": self._card_state_to_vec(player['spell']).flatten(),
+            "t_oppo_m": self._card_state_to_vec(opponent['monster']).flatten(),
+            "t_oppo_s": self._card_state_to_vec(opponent['spell']).flatten(),
         }
 
     @staticmethod
-    def _IDStateList_to_vector(id_state_list: List[Tuple[int, int]]) -> np.ndarray:
-        assert len(id_state_list) == 5, "The card list is padded to 5 with empty card (None)"
+    def _card_state_to_vec(card_state: List[Tuple[int, int]]) -> np.ndarray:
+        assert len(card_state) == 5, "The card list is padded to 5 with empty card (None)"
 
         frame_array = np.zeros(shape=(5, len(DECK) + 2), dtype=np.float32)
-        for i, id_state in enumerate(id_state_list):
+        for i, id_state in enumerate(card_state):
             card_id, pos = id_state[0], id_state[1]
 
             # One-hot encoding for the card ID.
@@ -271,13 +240,81 @@ class YGOEnv(gym.Env):
         return frame_array
 
     @staticmethod
-    def _IDList_to_MultiHot(id_list: List[int]) -> np.ndarray:
+    def _card_to_vec(cards: List[int]) -> np.ndarray:
         multi_hot = np.zeros(shape=(len(DECK), ), dtype=np.float32)
 
-        for card_id in id_list:
+        for card_id in cards:
             multi_hot[CARDS2IDX[card_id]] += 1
 
         return multi_hot
+
+    def _wait(self) -> Dict:
+        """ Wait until the server ask player to decide an action. """
+
+        # Message communicates through the player's connection.
+        # But not all of them should be read by the player.
+        player, opponent = self._game._players[0], self._game._players[1]
+        while (embed := self.player.wait()):
+            ### recv
+            while True:
+                _, state, action, _ = self._decode_server_msg(embed)
+                receiver: Player = self._game._players[embed['recv']]
+
+                if action is None or action['requirement'] != 'PLACE':
+                    break
+
+                n = action['min']
+                response = ' '.join(action['options'][:n])
+                receiver._write(response.encode() + b'\r\n')
+                embed = self.player.wait()
+
+            if receiver is player:
+                break
+
+            opponent._sm = StateMachine.from_dict(action)
+            opponent._state = state
+            while True:
+                state['last_option'] = opponent.last_option()
+
+                ### predict
+                options, targets = opponent.list_valid_actions()
+                action = self._opponent_policy.react(state, options, targets)
+
+                ### write
+                if (is_sent := opponent.step(action)) is not None:
+                    break
+
+        return embed
+
+    @staticmethod
+    def _decode_server_msg(
+            embed: Dict
+        ) -> Tuple[bool, Dict, Dict | None, float | None]:
+        """
+        Returns
+        -------
+        terminated : bool
+            Whether the game is over.
+
+        state : Dict
+            The state in Dict format.
+
+        actions : Dict | None
+            The valid actions in Dict format.
+
+        score: float | None
+            The result of the game.
+        """
+        return (
+            'terminated' in embed,
+            embed.get('state', None),
+            embed.get('actions', None),
+            embed.get('score', None)
+        )
+
+    # --------------------------------------------------------------------------
+    # Gym's API
+    # --------------------------------------------------------------------------
 
     def seed(self, seed=None) -> None:
         self.np_random, seed = seeding.np_random(seed)
@@ -286,11 +323,17 @@ class YGOEnv(gym.Env):
     def step(self, action: int) -> Tuple[Dict[str, Tensor], float, bool, bool, GameInfo]:
         # Illegal move. Nothing happens but the agent will be punished.
         if not self._action_masks[action]:
-            return self._state, self._illegal_move_reward, False, False, self._info
+            return self._state, -0.2, False, False, self._info
 
         # Otherwise, interact with the environment.
         action = self.decode_action(action)
-        terminated, next_state, _, score = self.player.step(action)
+
+        # Request the next state
+        if self.player.step(action) is not None:
+            terminated, next_state, action, score = self._decode_server_msg(self._wait())
+        else:
+            terminated, next_state, action, score = False, self.player._state, None, None
+
         next_state['last_option'] = self.player.last_option()
 
         # Maintain reward function
@@ -311,8 +354,8 @@ class YGOEnv(gym.Env):
             case 'LP_exp_step':
                 reward += (LP_diff * self._reward_kwargs['weight']) / np.exp(self._info['steps'] / self._reward_kwargs['temperature'])
 
-        valid_actions = self.player.list_valid_actions()
-        self._encode_state(next_state, valid_actions)
+        # Prepare the next state tensor.
+        self._encode_state(next_state, self.player.list_valid_actions())
 
         # Copy player states for evaluation.
         self._info['steps'] += 1
@@ -344,29 +387,14 @@ class YGOEnv(gym.Env):
         info: Info
             Additional information.
         """
-        # Halt the previous launched thread.
-        #
-        # Assume that all resources are released after the instance
-        # is no longer referenced by any variables.
-        if self._process is not None:
-            self._process.terminate()
-
-        if self._game is None:
-            self._game = Game(self._advantages)
-
-        # Re-create the game instance.
+        # Re-start the game instance.
         self._game.start()
 
-        # Launch a new thread for the opponent's decision making.
-        torch.multiprocessing.set_start_method('spawn', force=True)
-        self._process = Process(target=game_loop, args=(self._game._player2, self._opponent))
-        self._process.start()
-
         # Wait until server acknowledges the player to make a decision.
-        terminated, state, action, reward = self.player.decode_server_msg(self.player.wait())
+        _, state, action, _ = self._decode_server_msg(self._wait())
+        state['last_option'] = self.player.last_option()
         self.player._sm = StateMachine.from_dict(action)
         self.player._state = state
-        state['last_option'] = self.player.last_option()
 
         # Encode the game state into the tensor.
         self._encode_state(state, self.player.list_valid_actions())
@@ -380,10 +408,6 @@ class YGOEnv(gym.Env):
 
         A workaround for the bug of the multiprocessing module.
         """
-        # Halt the previous launched thread.
-        if self._process is not None:
-            self._process.terminate()
-
         # Assume that all resources are released after the instance
         # is no longer referenced by any variables.
         if self._game is not None:
@@ -391,3 +415,7 @@ class YGOEnv(gym.Env):
 
     def render(self, mode='human', close=False):
         raise NotImplementedError()
+
+    def action_masks(self) -> np.ndarray:
+        """ Return True if the action is valid. """
+        return self._action_masks

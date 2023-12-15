@@ -61,8 +61,8 @@ def select_card(self, player, cancelable, min_cards, max_cards, cards: List[Card
 			pl.notify(pl._("Select %d to %d cards separated by spaces:") % (min_cards, max_cards))
 
 		# Inject a JSON string to indicate which cards are usable
-		pl.notify(dump_game_info(
-			self, pl, **{ 'actions': {
+		self.players[self.agent].notify(dump_game_info(
+			self, pl, recv=int(self.agent != player), **{ 'actions': {
 				'requirement': 'TRIBUTE' if is_tribute else 'SELECT',
 				'min': min_cards, 'max': max_cards, 'type': 'spec',
 				'options': [], 'targets': [(k, v.code) for k, v in pl.card_list.items()],

@@ -23,8 +23,13 @@ ckt_dict = {}
 #############
 
 class RandomPolicy(Policy):
-    def react(self, state: GameState, actions: List[Action]) -> Action:
-        return random.choice(actions)
+    def react(
+            self,
+            state: GameState,
+            options: List[Action],
+            targets: Dict[Action, List[Action]]
+        ) -> Action:
+        return random.choice(options + targets)
 
 # the following class is the old version of the pseudo-self-play opponent
 class PseudoSelfPlayPolicy(Policy):
@@ -142,15 +147,11 @@ class PseudoSelfPlayPolicy(Policy):
             action = self._spec_unmap[action]
         return action
 
-    def react(self, state: GameState, actions: Tuple[List[Action], Dict[Action, Set[str]]]) -> Action:
-        """
-        ---old version---
-        model = MaskablePPO.load(self._model_path)
-        self._encode_state(state, actions)
-        action, _state = model.predict(self._state, action_masks=self._action_mask, deterministic=True)
-        action = self.decode_action(action.item())
-        del model
-        """
+    def react(
+            self,
+            state: GameState,
+            actions: Tuple[List[Action], Dict[Action, Set[str]]]
+        ) -> Action:
         self._encode_state(state, actions)
         action, _state = ckt_dict['0'].predict(self._state, action_masks=self._action_masks, deterministic=True)
         action = self.decode_action(action.item())

@@ -29,12 +29,12 @@ def select_effectyn(self, player, card, desc):
 
 	# Inject a JSON string to indicate which cards are usable
 	question = pl._("Do you want to use the effect from {card} in {spec}?").format(card=card.get_name(pl), spec=spec)
-	question += dump_game_info(
-		self, pl, **{ 'actions': {
+	self.players[self.agent].notify(dump_game_info(
+		self, pl, recv=int(self.agent != player), **{ 'actions': {
 			'requirement': 'SELECT', 'min': 1, 'max': 1,
 			'options': ['y', 'n'], 'targets': [],
 		}}
-	)
+	))
 	s = card.get_effect_description(pl, desc, True)
 	if s != '':
 		question += '\n'+s

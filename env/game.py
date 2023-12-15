@@ -8,7 +8,12 @@ from .player import Action, GameState, Player
 
 class Policy(ABC):
     @abstractmethod
-    def react(self, state: GameState, actions: List[Action]) -> Action:
+    def react(
+            self,
+            state: GameState,
+            options: List[Action],
+            targets: Dict[Action, List[Action]]
+        ) -> Action:
         raise NotImplementedError
 
 RACES = [
@@ -132,13 +137,11 @@ class RockPaperScissorsAction(IntEnum):
     Scissors = 3
 
 class Game:
-    _player1: Player
-    _player2: Player
+    _players: List[Player]
     _advantages: Dict
 
     def __init__(self, advantages: Dict) -> None:
-        self._player1 = Player()
-        self._player2 = Player()
+        self._players = [Player(), Player()]
         self._advantages = advantages
 
     @staticmethod
@@ -153,20 +156,18 @@ class Game:
         return (p1, p2) if res else (p2, p1)
 
     def close(self) -> None:
-        if self._player1 is not None:
-            self._player1.close()
-
-        if self._player2 is not None:
-            self._player2.close()
+        for p in self._players:
+            if p is not None:
+                p.close()
 
         return None
 
     def start(self) -> 'Game':
-        self._player1.create_room(self._advantages)
-        self._player2.join(self._player1.username)
-        self._player1.start_game()
+        self._players[0].create_room(self._advantages)
+        self._players[1].join(self._players[1].username)
+        self._players[0].start_game()
 
-        p1, _ = self.determine_first_player(self._player1, self._player2)
+        p1, _ = self.determine_first_player(*self._players)
         p1.first()
 
         return self

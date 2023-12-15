@@ -51,8 +51,8 @@ def _dump_state(duel: Duel, player: Player) -> Dict:
     }
 
 # See ygo.constants.PHASES
-def dump_game_info(duel: Duel, player: Player, **kwargs) -> str:
+def dump_game_info(duel: Duel, player: Player, recv: int, **kwargs) -> str:
     """ Pack the current state of the duel into a JSON string.
     Then, wrap the message by adding separators '|' before and after the JSON string.
     """
-    return f"|{json.dumps({ 'state': _dump_state(duel, player), **kwargs })}|"
+    return f"|{json.dumps({ 'state': _dump_state(duel, player), 'recv': recv, **kwargs })}|"

@@ -41,8 +41,9 @@ def display_battle_menu(self, pl):
 		options.append('m')
 	if self.to_ep:
 		options.append('e')
-	pl.notify(dump_game_info(
-		self, pl, **{ 'actions': {
+
+	self.players[self.agent].notify(dump_game_info(
+		self, pl, recv=int(self.agent != self.tp), **{ 'actions': {
 			'requirement': 'BATTLE',
 			'options': options,
 			'targets': {

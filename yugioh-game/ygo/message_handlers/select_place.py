@@ -26,8 +26,8 @@ def select_place(self, player, count, flag):
 	else:
 		pl.notify(pl._("Select %d places for card, from %s.") % (count, ", ".join(specs)))
 	# Inject a JSON string to indicate which actions are valid
-	pl.notify(dump_game_info(
-		self, pl, **{ 'actions': {
+	self.players[self.agent].notify(dump_game_info(
+		self, pl, recv=int(self.agent != player), **{ 'actions': {
 			'requirement': 'PLACE', 'min': count, 'max': count,
 			'options': specs,
 			'targets': [],

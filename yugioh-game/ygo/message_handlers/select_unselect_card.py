@@ -57,8 +57,8 @@ def select_unselect_card(
         state = pl._("checked")
       pl.notify("%d: %s (%s)" % (i+1, name, state))
 
-    pl.notify(dump_game_info(
-      self, pl, **{ 'actions': {
+    self.players[self.agent].notify(dump_game_info(
+      self, pl, recv=int(self.agent != player), **{ 'actions': {
         'requirement': 'SELECT', 'foreach': 1, 'min': min, 'max': max,
         'options': [],
         'targets': [(k, v.code) for k, v in _select_cards.items()],

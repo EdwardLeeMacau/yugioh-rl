@@ -42,8 +42,8 @@ def select_position(self, player, card, positions):
 		m.item(pl._("Face-down defense"))(lambda caller: set(caller, 8))
 		choices.append(len(choices) + 1)
 
-	pl.notify(dump_game_info(
-		self, pl, **{ 'actions': {
+	self.players[self.agent].notify(dump_game_info(
+		self, pl, recv=int(self.agent != player), **{ 'actions': {
 			'requirement': 'SELECT', 'min': 1, 'max': 1,
 			'targets': [],
 			'options': list(map(lambda x: str(int(x)), choices)),
