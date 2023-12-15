@@ -33,7 +33,7 @@ CardID = int
 ################
 
 def game_loop(player: Player, policy: Policy) -> None:
-    terminated, state, action = player.decode_server_msg(player.wait())
+    terminated, state, action, reward = player.decode_server_msg(player.wait())
     player._sm = StateMachine.from_dict(action)
     player._state = state
     state['last_option'] = player.last_option()
@@ -44,7 +44,7 @@ def game_loop(player: Player, policy: Policy) -> None:
             action = policy.react(state, options + list(targets.values()))
         else:
             action = policy.react(state, (options, targets))
-        terminated, state, _ = player.step(action)
+        terminated, state, _, reward = player.step(action)
         state['last_option'] = player.last_option()
 
     return
@@ -156,7 +156,6 @@ class YGOEnv(gym.Env):
         self._advantages = advantages
         self._state = None
 
-        # `reward_type` should be "win/loss reward", "LP", "LP_linear_step", or "LP_exp_step".
         if reward_kwargs['type'] not in ["win/loss", "LP", "LP_linear_step", "LP_exp_step"]:
             raise ValueError(f"Invalid reward type: {reward_kwargs}")
 
@@ -292,15 +291,13 @@ class YGOEnv(gym.Env):
         # Otherwise, interact with the environment.
         reward = 0.
         action = self.decode_action(action)
-        terminated, next_state_dict, concrete_action = self.player.step(action)
+        terminated, next_state_dict, concrete_action, score = self.player.step(action)
         next_state_dict['last_option'] = self.player.last_option()
         self._info['steps'] += 1
 
         # * Win/Lose reward
         # info['score'] stores the result of the game.
         # 1 for win, -1 for lose, 0 for draw, None for not terminated.
-        score = next_state_dict.get('score', None)
-        self._info['score'] = score
         reward += score if score is not None else 0.
 
         # * reward shaping
@@ -355,7 +352,7 @@ class YGOEnv(gym.Env):
 
         # Re-create the game instance.
         self._game.start()
-        self._info = { 'steps': 0, 'outcome': 0.0 }
+        self._info = { 'steps': 0, 'score': 0.0 }
 
         # Launch a new thread for the opponent's decision making.
         torch.multiprocessing.set_start_method('spawn', force=True)
@@ -363,7 +360,7 @@ class YGOEnv(gym.Env):
         self._process.start()
 
         # Wait until server acknowledges the player to make a decision.
-        terminated, state, action = self.player.decode_server_msg(self.player.wait())
+        terminated, state, action, reward = self.player.decode_server_msg(self.player.wait())
         self.player._sm = StateMachine.from_dict(action)
         self.player._state = state
         state['last_option'] = self.player.last_option()

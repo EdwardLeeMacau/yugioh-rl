@@ -158,7 +158,10 @@ class Player:
         embed = json.loads(embed[:-1])
         return embed
 
-    def decode_server_msg(self, embed: Dict) -> Tuple[bool, Dict, Dict | None]:
+    def decode_server_msg(
+            self,
+            embed: Dict
+        ) -> Tuple[bool, Dict, Dict | None, float | None]:
         """
         Returns
         -------
@@ -170,8 +173,16 @@ class Player:
 
         actions : Dict | None
             The valid actions in Dict format.
+
+        score: float | None
+            The result of the game.
         """
-        return 'terminated' in embed, embed.get('state', None), embed.get('actions', None)
+        return (
+            'terminated' in embed,
+            embed.get('state', None),
+            embed.get('actions', None),
+            embed.get('score', None)
+        )
 
     def step(
             self,
@@ -191,7 +202,7 @@ class Player:
             None if the step is only the part of the valid action.
         """
         if not self._sm.step(action):
-            return False, self._state, None
+            return False, self._state, None, None
 
         # Form a complete message to server
         action = self._sm.to_string()
@@ -199,7 +210,7 @@ class Player:
 
         while True:
             # Wait for next decision
-            terminated, state, action = self.decode_server_msg(self.wait())
+            terminated, state, action, score = self.decode_server_msg(self.wait())
 
             # Auto deal with the PLACE requirement
             if action is None or action['requirement'] != 'PLACE':
@@ -212,4 +223,4 @@ class Player:
         self._sm = StateMachine.from_dict(action)
         self._state = state
 
-        return terminated, state, action
+        return terminated, state, action, score
