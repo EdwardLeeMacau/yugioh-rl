@@ -13,8 +13,9 @@ def win(self, player, reason):
 	if player == 2:
 		self.room.announce_draw()
 		self.end()
-		for p in self.players:
-			p.notify(dump_game_info(self, p, recv=self.players.index(p), terminated=True, score=0))
+		self.players[self.agent].notify(dump_game_info(
+			self, self.players[self.agent], recv=0, terminated=True, score=0
+		))
 		return
 
 	if self.tag is True:
