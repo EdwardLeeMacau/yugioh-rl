@@ -127,7 +127,8 @@ class YGOEnv(gym.Env):
         ):
         super(YGOEnv, self).__init__()
         # define the Game and the opponent object
-        self._game = Game(advantages)
+        self._game = None
+        self._advantages = advantages
         self._opponent_policy = opponent_policy
         self._state = None
 
@@ -254,7 +255,7 @@ class YGOEnv(gym.Env):
         # Message communicates through the player's connection.
         # But not all of them should be read by the player.
         player, opponent = self._game._players[0], self._game._players[1]
-        while (embed := self.player.wait()):
+        while (embed := player.wait()):
             ### recv
             while True:
                 _, state, action, _ = self._decode_server_msg(embed)
@@ -331,6 +332,8 @@ class YGOEnv(gym.Env):
         # Request the next state
         if self.player.step(action) is not None:
             terminated, next_state, action, score = self._decode_server_msg(self._wait())
+            self.player._sm = StateMachine.from_dict(action)
+            self.player._state = next_state
         else:
             terminated, next_state, action, score = False, self.player._state, None, None
 
@@ -387,14 +390,17 @@ class YGOEnv(gym.Env):
         info: Info
             Additional information.
         """
+        if self._game is None:
+            self._game = Game(self._advantages)
+
         # Re-start the game instance.
         self._game.start()
 
         # Wait until server acknowledges the player to make a decision.
         _, state, action, _ = self._decode_server_msg(self._wait())
-        state['last_option'] = self.player.last_option()
         self.player._sm = StateMachine.from_dict(action)
         self.player._state = state
+        state['last_option'] = None
 
         # Encode the game state into the tensor.
         self._encode_state(state, self.player.list_valid_actions())

@@ -29,7 +29,7 @@ class RandomPolicy(Policy):
             options: List[Action],
             targets: Dict[Action, List[Action]]
         ) -> Action:
-        return random.choice(options + targets)
+        return random.choice(options + list(targets.values()))
 
 # the following class is the old version of the pseudo-self-play opponent
 class PseudoSelfPlayPolicy(Policy):

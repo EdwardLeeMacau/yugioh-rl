@@ -157,14 +157,13 @@ class Game:
 
     def close(self) -> None:
         for p in self._players:
-            if p is not None:
-                p.close()
+            p.close()
 
         return None
 
     def start(self) -> 'Game':
         self._players[0].create_room(self._advantages)
-        self._players[1].join(self._players[1].username)
+        self._players[1].join(self._players[0].username)
         self._players[0].start_game()
 
         p1, _ = self.determine_first_player(*self._players)
