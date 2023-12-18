@@ -172,6 +172,14 @@ class YGOEnv(gym.Env):
     def player(self) -> Player:
         return self._game._player1
 
+    @property
+    def opponent(self) -> Policy:
+        return self._opponent
+
+    @opponent.setter
+    def opponent(self, opponent: Policy) -> None:
+        self._opponent = opponent
+
     def action_masks(self) -> np.ndarray:
         """ Return True if the action is valid. """
         return self._action_masks
