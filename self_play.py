@@ -32,12 +32,12 @@ CONFIG = {
     "save_path": "models",
 
     "epoch_num": 100,
-    "update_opponent_freq": 10,
+    "update_opponent_freq": 1,
     "timesteps_per_epoch": 32768,
     "n_steps": 256,
     "clip_range": 0.2,
     "batch_size": 512,
-    "parallel": 4,
+    "parallel": 16,
     "eval_episode_num": 128,
     "learning_rate": 0.0003,
     "gamma": 0.99,
@@ -50,7 +50,7 @@ def make_env():
 def train(model, config, eval_env):
     savedir = os.path.join(config['save_path'], config['run_id'])
     with open(os.path.join(savedir, f"metrics.json"), 'w') as f:
-        n = config['parallel'] // 2
+        N = config['parallel'] // 2
         for epoch in range(1, config["epoch_num"] + 1):
             ### Train agent using SB3
             model.learn(
@@ -74,12 +74,32 @@ def train(model, config, eval_env):
             # Always save the model
             model.save(os.path.join(savedir, str(epoch)))
 
+            # Make opponent diverse
             if epoch % config['update_opponent_freq'] == 0:
                 policy = PseudoSelfPlayPolicy(
-                    os.path.join('models', RUN_ID, f'{epoch}.zip')
+                    os.path.join('models', RUN_ID, f'{epoch-(0 * config["update_opponent_freq"])}.zip')
                 )
-                for env in model.env.unwrapped.envs[n:]:
+                for env in model.env.unwrapped.envs[N:N+int(N/2)]:
                     env.opponent = policy
+
+                if epoch - 1 * config['update_opponent_freq'] <= 0:
+                    continue
+
+                policy = PseudoSelfPlayPolicy(
+                    os.path.join('models', RUN_ID, f'{epoch-(1 * config["update_opponent_freq"])}.zip')
+                )
+                for env in model.env.unwrapped.envs[N+int(N/2):N+int(N/2)+int(N/4)]:
+                    env.opponent = policy
+
+                if epoch - 2 * config['update_opponent_freq'] <= 0:
+                    continue
+
+                policy = PseudoSelfPlayPolicy(
+                    os.path.join('models', RUN_ID, f'{epoch-(2 * config["update_opponent_freq"])}.zip')
+                )
+                for env in model.env.unwrapped.envs[N+int(N/2)+int(N/4)+int(N/8):]:
+                    env.opponent = policy
+
 
 if __name__ == "__main__":
     train_env = DummyVecEnv([make_env for _ in range(CONFIG["parallel"])])
