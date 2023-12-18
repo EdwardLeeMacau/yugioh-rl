@@ -293,6 +293,11 @@ class YGOEnv(gym.Env):
         terminated, next_state, _, score = self.player.step(action)
         next_state['last_option'] = self.player.last_option()
 
+        # Copy player states for evaluation.
+        self._info['steps'] += 1
+        self._info['state'] = next_state
+        self._info['score'] = score
+
         # Maintain reward function
         reward = 0.
 
@@ -313,11 +318,6 @@ class YGOEnv(gym.Env):
 
         valid_actions = self.player.list_valid_actions()
         self._encode_state(next_state, valid_actions)
-
-        # Copy player states for evaluation.
-        self._info['steps'] += 1
-        self._info['state'] = next_state
-        self._info['score'] = score
 
         return self._state, reward, terminated, False, self._info
 
