@@ -79,25 +79,7 @@ def train(model, config, eval_env):
                 policy = PseudoSelfPlayPolicy(
                     os.path.join('models', RUN_ID, f'{epoch-(0 * config["update_opponent_freq"])}.zip')
                 )
-                for env in model.env.unwrapped.envs[N:N+int(N/2)]:
-                    env.opponent = policy
-
-                if epoch - 1 * config['update_opponent_freq'] <= 0:
-                    continue
-
-                policy = PseudoSelfPlayPolicy(
-                    os.path.join('models', RUN_ID, f'{epoch-(1 * config["update_opponent_freq"])}.zip')
-                )
-                for env in model.env.unwrapped.envs[N+int(N/2):N+int(N/2)+int(N/4)]:
-                    env.opponent = policy
-
-                if epoch - 2 * config['update_opponent_freq'] <= 0:
-                    continue
-
-                policy = PseudoSelfPlayPolicy(
-                    os.path.join('models', RUN_ID, f'{epoch-(2 * config["update_opponent_freq"])}.zip')
-                )
-                for env in model.env.unwrapped.envs[N+int(N/2)+int(N/4)+int(N/8):]:
+                for env in model.env.unwrapped.envs:
                     env.opponent = policy
 
 
