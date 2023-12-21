@@ -2,17 +2,16 @@ import json
 import os
 import shutil
 import warnings
-import gymnasium as gym
 from datetime import datetime
-from gymnasium.envs.registration import register
 
+import gymnasium as gym
+from gymnasium.envs.registration import register
 from sb3_contrib import MaskablePPO
 from stable_baselines3.common.vec_env import DummyVecEnv
 
-from model import MultiFeaturesExtractor
 from env_config import ENV_CONFIG
-
-from eval import play_game_multiple_times, evaluate
+from eval import evaluate, play_game_multiple_times
+from model import MultiFeaturesExtractor
 
 warnings.filterwarnings("ignore")
 register(

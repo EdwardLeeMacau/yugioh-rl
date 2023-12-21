@@ -156,7 +156,9 @@ class YGOEnv(gym.Env):
         self._advantages = advantages
         self._state = None
 
-        if reward_kwargs['type'] not in ["win/loss", "LP", "LP_linear_step", "LP_exp_step"]:
+        if reward_kwargs['type'] not in (
+            "win/loss", "step_penalty", "step_reward", "LP", "LP_linear_step", "LP_exp_step"
+        ):
             raise ValueError(f"Invalid reward type: {reward_kwargs}")
 
         self._reward_kwargs = reward_kwargs
@@ -310,13 +312,18 @@ class YGOEnv(gym.Env):
         reward = 0.
 
         # * Win/Lose reward
-        reward += score if score is not None else 0.
+        score = score if score is not None else 0.
+        reward += score
 
         # * Reward shaping
         LP_diff = (next_state['player']['lp'] - next_state['opponent']['lp']) / 16000.
         match self._reward_kwargs['type']:
             case 'win/loss':
                 pass
+            case 'step_penalty':
+                reward -= self._reward_kwargs['weight']
+            case 'step_reward':
+                reward += (terminated * score * self._reward_kwargs['weight'] / self._info['steps'])
             case 'LP':
                 reward += LP_diff * self._reward_kwargs['weight']
             case 'LP_linear_step':
