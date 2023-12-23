@@ -70,7 +70,7 @@ def select_card(self, player, cancelable, min_cards, max_cards, cards: List[Card
 		))
 		for i, c in enumerate(_cards.values()):
 			name = self.cardlist_info_for_player(c, pl)
-			pl.notify("%d: %s" % (i+1, name))
+			pl.notify("%s: %s" % (c.get_spec(pl), name))
 		pl.notify(DuelReader, f, no_abort="Invalid command", restore_parser=DuelParser)
 
 	def error(text):

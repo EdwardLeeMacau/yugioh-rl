@@ -55,4 +55,7 @@ def dump_game_info(duel: Duel, player: Player, **kwargs) -> str:
     """ Pack the current state of the duel into a JSON string.
     Then, wrap the message by adding separators '|' before and after the JSON string.
     """
+    if not player.show_prompt:
+        return ""
+
     return f"|{json.dumps({ 'state': _dump_state(duel, player), **kwargs })}|"

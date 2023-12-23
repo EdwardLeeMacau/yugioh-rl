@@ -34,6 +34,7 @@ class Player(Invitable):
 		self.reply_to = ""
 		self.say = True
 		self.seen_waiting = None
+		self.show_prompt = True
 		self.soundpack = False
 		self.tell = Tell()
 		self.watch = True
@@ -149,7 +150,7 @@ class Player(Invitable):
 
 	def disable_language_chat(self, lang):
 		self.language_chats[lang] = False
-	
+
 	def enable_language_chat(self, lang):
 		self.language_chats[lang] = True
 
@@ -162,10 +163,10 @@ class Player(Invitable):
 	def is_ignoring(self, pl):
 		if not isinstance(pl, Player):
 			return False
-		
+
 		if pl.is_admin:
 			return False
-		
+
 		return pl.nickname in self.ignores
 
 	@property

@@ -1,5 +1,6 @@
 import argparse
 import copy
+import pysnooper
 import warnings
 from queue import Queue
 from typing import List, Tuple
@@ -15,7 +16,7 @@ from tqdm import tqdm
 from env.game import Action, GameState
 from env.single_gym_env import GameInfo, YGOEnv
 from env_config import ENV_CONFIG
-from policy import RandomPolicy
+from policy import RandomPolicy, PseudoSelfPlayPolicy
 
 warnings.filterwarnings("ignore")
 register(
@@ -25,6 +26,11 @@ register(
     kwargs={
         'opponent': RandomPolicy(),
     },
+)
+
+register(
+    id="ygo",
+    entry_point="env.single_gym_env:Duel",
 )
 
 # observation, action, decoded action, reward, game info,
@@ -96,22 +102,38 @@ def parse_args() -> argparse.Namespace:
 
     parser.add_argument('-n', "--num-game", type=int, default=1000)
     parser.add_argument("--model-path", type=str, required=True)
+    parser.add_argument("--opponent", type=str, default="random", choices=["random", "human"])
     return parser.parse_args()
 
 def main():
     args = parse_args()
 
-    env = gym.make('single_ygo')
     model = MaskablePPO.load(args.model_path)
+    match args.opponent:
+        case "random":
+            env: YGOEnv = gym.make('single_ygo')
+            trajectories = play_game_multiple_times(args.num_game, env, model)
+            metric = evaluate(trajectories)
 
-    trajectories = play_game_multiple_times(args.num_game, env, model)
-    metric = evaluate(trajectories)
+            print(f'step: {metric["steps"].mean()}')
+            print(f'win rate: {metric["win"].mean()}')
+            print(f'remain lp: {metric["remain_lp"].mean()}')
 
-    print(metric)
+        case "human":
+            env: YGOEnv = gym.make('ygo')
 
-    print(f'step: {metric["steps"].mean()}')
-    print(f'win rate: {metric["win"].mean()}')
-    print(f'remain lp: {metric["remain_lp"].mean()}')
+            done = False
+            obs, _ = env.reset()
+            while not done:
+                mask = get_action_masks(env)
+                action, _ = model.predict(obs, action_masks=mask, deterministic=True)
+                action = int(action)
+
+                print(f"Action: {env.decode_action(action)}")
+                obs, _, done, _, _ = env.step(action)
+
+
+    env.close()
 
 if __name__ == '__main__':
     main()

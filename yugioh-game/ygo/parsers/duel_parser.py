@@ -7,6 +7,12 @@ from .. import parser
 
 DuelParser = parser.Parser(command_substitutions = COMMAND_SUBSTITUTIONS)
 
+@DuelParser.command(names=['showprompt'])
+def showprompt(caller):
+	pl = caller.connection.player
+	pl.show_prompt = not pl.show_prompt
+	pl.notify(pl._("Show prompt: %s") % (pl.show_prompt))
+
 @DuelParser.command(names=['h', 'hand'])
 def hand(caller):
 	pl = caller.connection.player
@@ -119,7 +125,7 @@ def cancel(caller):
 		return
 
 	pl.cancel_request = True
-	
+
 	try:
 		duel.tag_players[pl.duel_player].cancel_request = True
 	except IndexError:
@@ -192,7 +198,7 @@ def tag(caller):
 	if len(caller.args) == 0 or caller.args[0] == '':
 		caller.connection.notify(caller.connection._("You need to send some text to this channel."))
 		return
-	
+
 	caller.connection.player.duel.tags[caller.connection.player.duel_player].send_message(caller.connection.player, caller.args[0])
 
 @DuelParser.command(names=['taghistory'], allowed = lambda c: c.connection.player in c.connection.player.duel.players or c.connection.player in c.connection.player.duel.tag_players and c.connection.player.duel.tag is True)
@@ -278,5 +284,5 @@ def invite(caller):
 		pl.notify(pl._("An invitation was sent to %s.")%(target.nickname))
 
 	else:
-	
+
 		pl.notify(pl._("{0} already got an invitation to this duel.").format(target.nickname))

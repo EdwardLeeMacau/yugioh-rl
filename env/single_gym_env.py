@@ -406,3 +406,55 @@ class YGOEnv(gym.Env):
 
     def render(self, mode='human', close=False):
         raise NotImplementedError()
+
+class Duel(YGOEnv):
+    def reset(self, seed=None, options=None) -> Tuple[Dict[str, Tensor], GameInfo]:
+        """ Reset the game.
+
+        Arguments
+        ---------
+        seed: int | None
+            The random seed for the game.
+            ! NOT work because the randomness comes from both the game and the agent.
+
+        options: dict | None
+            The options for the game.
+
+        Returns
+        -------
+        state: GameState
+            The initial state of the game.
+
+        info: Info
+            Additional information.
+        """
+        # Halt the previous launched thread.
+        #
+        # Assume that all resources are released after the instance
+        # is no longer referenced by any variables.
+        if self._process is not None:
+            self._process.terminate()
+
+        if self._game is None:
+            self._game = Game(self._advantages)
+
+        # Re-create the game instance.
+        self._game.start()
+        self._game._player2._server.write("showprompt\r\n".encode())
+
+        account = self._game._player2._account
+        print("Please login as the opponent")
+        print(f"Login as {account.username}@{account.host}:{account.port}")
+
+        # Wait until server acknowledges the player to make a decision.
+        terminated, state, action, reward = self.player.decode_server_msg(self.player.wait())
+        self.player._sm = StateMachine.from_dict(action)
+        self.player._state = state
+        state['last_option'] = self.player.last_option()
+
+        # Encode the game state into the tensor.
+        self._encode_state(state, self.player.list_valid_actions())
+
+        self._info = { 'steps': 0, 'score': 0.0, 'state': state }
+
+        return self._state, self._info
