@@ -12,6 +12,7 @@ RUN mkdir ./pip && \
     pip install --prefix "/usr/src/app/pip" -r requirements.txt && \
     pip install cffi babel && \
     git clone https://github.com/Fluorohydride/ygopro-core core && \
+    cd core && git checkout 8799b7a1315c3266c26bda575f019258b4c2beda && cd .. && \
     git clone https://github.com/Fluorohydride/ygopro-scripts script && \
     wget https://www.lua.org/ftp/lua-5.3.5.tar.gz && \
     apt-get update && \
