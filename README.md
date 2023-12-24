@@ -1,11 +1,5 @@
 # Yu-Gi-Oh RL
 
-## Project Architecture
-
-`Game`, `Account`, and `Player` aim to manage the resource to interact with MUD server. They are just adapters, and do not hold any game decision making issues.
-
-`Policy` is the abstract class for decision making. You can think `Policy.react()` is the function $\pi(a_t|s_t)$ in mathematical representation.
-
 ## Game Design
 
 The game is based on YGO04 environment with these revision:
@@ -16,16 +10,6 @@ The game is based on YGO04 environment with these revision:
   - 32807846 (Reinforcement of the Army) => 44095762 (Mirror Force)
   - 42829885 (The Forceful Sentry) => 71413901 (Breaker the Magical Warrior)
   - 17375316 (Confiscation) => 69162969 (Lightning Vortex)
-
-## Run Experiments in Parallel
-
-Modify `env/account.py` before running the training script.
-
-For example
-- Parallel training in 32 games (see argument `parallel` in `env_config.py`), needs 32 games * 2 = 64 accounts
-- Evaluate with 32 environments (see argument `num_resources` in `eval.play_game_multiple_times()`), needs 32 games * 2 = 64 accounts
-
-Total 128 accounts are allocated by single training script.
 
 ## Setup
 
@@ -59,23 +43,22 @@ Total 128 accounts are allocated by single training script.
         -v $(pwd)/ygo:/usr/src/app/ygo \
         -v $(pwd)/ygo.py:/usr/src/app/ygo.py \
         --name yugioh \
-        yugioh \
-        /bin/bash
+        yugioh
 
-    # Execute the script inside container
-    python3 ygo.py
-    ```
-
-5. Test with telnet (manual)
-
-    ```bash
+    # Confirm the server is reachable with telnet.
     telnet localhost 4000
     ```
 
-    or with `main.py` (random agent)
+5. Train an agent with `train_PPO.py`.
 
     ```bash
-    python3 main.py
+    python3 train_PPO.py
+    ```
+
+6. Evaluate the agent with `eval.py`
+
+    ```bash
+    python eval.py --model-path <model-path>
     ```
 
 ## Sources
